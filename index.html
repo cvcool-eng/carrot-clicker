@@ -122,6 +122,14 @@
   .swatch .leaf { position: absolute; left: 8px; top: 0; width: 10px; height: 10px; border-radius: 50% 50% 0 0; background: var(--sl); }
   .swatch .body { position: absolute; top: 8px; left: 0; right: 0; bottom: 0; clip-path: polygon(0 0, 100% 0, 52% 100%, 48% 100%); border-radius: 6px; background: linear-gradient(135deg, var(--sb1), var(--sb2)); }
 
+  .mod-btn {
+    display: block; width: 100%; margin-top: 6px; padding: 14px; border: 2px dashed #8a4dff; border-radius: 16px;
+    background: #f5efff; color: #6a2fc0; font: inherit; font-weight: 700; cursor: pointer;
+    transition: transform .2s var(--ease), background .2s;
+  }
+  .mod-btn:hover { transform: translateY(-2px); background: #ece1ff; }
+  .mod-btn.normal { border: 2px solid var(--text); background: var(--text); color: #fff; }
+  .mod-btn.normal:hover { background: #000; }
   .reset { display: block; margin: 8px auto 0; border: none; background: none; color: var(--muted); font: inherit; font-size: 13px; text-decoration: underline; cursor: pointer; }
 
   #toast {
@@ -146,6 +154,7 @@
     <span class="chip">👆 <b id="clicks">0</b> <span id="clicksLabel">clicks</span></span>
     <span class="chip">⏱️ <b id="perSec">0</b> / sec</span>
     <span class="chip">✖️ <b id="multi">1x</b> multiplier</span>
+    <span class="chip" id="modChip" style="color:#6a2fc0;border-color:#cdb4ff" hidden>🛠️ <b style="color:#6a2fc0">Modded</b></span>
   </div>
 </header>
 
@@ -273,10 +282,11 @@ const TAPS = [
   { id: 'firework', name: 'Firework',         cost: 100000, icon: '🎆' },
 ];
 
+const autoCost = n => Math.round(1000 * 1.3 ** n);       // 1000, 1300, 1690, ...
 const multCost = m => Math.round(250 * 4 ** (m - 1));     // 2x: 250, 3x: 1000, 4x: 4000, ...
 
 const SAVE_KEY = 'carrotClickerSave';
-const fresh = () => ({ carrots: 0, clicks: 0, mult: 1,
+const fresh = () => ({ carrots: 0, clicks: 0, autos: 0, mult: 1,
   carrotSkins: ['classic'], carrotSkin: 'classic', cursorSkins: ['default'], cursorSkin: 'default',
   trailSkins: ['none'], trailSkin: 'none', tapSkins: ['ripple'], tapSkin: 'ripple',
   crit: 0, turbo: 0, farms: 0, tractors: 0, golden: 0, cellar: 0, lastSeen: Date.now() });
@@ -293,11 +303,15 @@ const save = () => { state.lastSeen = Date.now(); try { localStorage.setItem(SAV
 const $ = id => document.getElementById(id);
 const skinBoost = () => (CARROT_SKINS.find(s => s.id === state.carrotSkin) || CARROT_SKINS[0]).boost;
 const clickValue = () => state.mult * skinBoost();        // carrots per click
-const perSec = () => (state.farms * 10 + state.tractors * 80) * 2 ** state.turbo;
+const autoValue = () => clickValue() * 2 ** state.turbo;  // carrots per auto clicker per second
+const perSec = () => state.autos * autoValue() + (state.farms * 10 + state.tractors * 80) * 2 ** state.turbo;
 const critChance = () => state.crit * .05;
 
 // every upgrade levels up state[key] by 1 when bought
 const UPGRADES = [
+  { key: 'autos', ico: '🖱️', name: 'Auto Clicker', tag: n => `${n} owned`,
+    desc: () => `Clicks the carrot once every second (+${fmt(autoValue())}/sec)`,
+    cost: autoCost, toast: '🖱️ Auto Clicker bought!' },
   { key: 'mult', ico: '✖️', name: 'Carrot Multiplier', tag: n => `${n}x`,
     desc: n => `Upgrade to ${n + 1}x carrots per click`,
     cost: multCost, toast: () => `✖️ Multiplier is now ${state.mult}x!` },
@@ -305,8 +319,8 @@ const UPGRADES = [
     desc: n => n < 10 ? `${(n + 1) * 5}% chance for a 10x CRIT click` : '50% chance for a 10x CRIT click',
     cost: n => Math.round(2000 * 2.2 ** n), toast: '🍀 Your clicks feel luckier!' },
   { key: 'turbo', ico: '⚙️', name: 'Turbo Gears', tag: n => `Lv ${n}`, max: 5,
-    desc: () => 'Farms and tractors make 2x carrots',
-    cost: n => Math.round(5000 * 5 ** n), toast: '⚙️ Farms and tractors sped up!' },
+    desc: () => 'Auto clickers, farms and tractors make 2x carrots',
+    cost: n => Math.round(5000 * 5 ** n), toast: '⚙️ Everything sped up!' },
   { key: 'farms', ico: '🌱', name: 'Carrot Farm', tag: n => `${n} owned`,
     desc: () => 'Grows 10 carrots every second',
     cost: n => Math.round(12000 * 1.3 ** n), toast: '🌱 New carrot farm!' },
@@ -600,7 +614,10 @@ function renderShop() {
     const [kind, list] = SKIN_TABS[tab];
     html = list.map((s, i) => skinRow(s, i, kind)).join('');
   }
-  $('list').innerHTML = html + '<button class="reset" id="reset">Reset progress</button>';
+  const modBtn = state.modded
+    ? '<button class="mod-btn normal" id="modBtn">↩️ Back to normal mode</button>'
+    : '<button class="mod-btn" id="modBtn">🔓 Unlock all (modded)</button>';
+  $('list').innerHTML = html + modBtn + '<button class="reset" id="reset">Reset progress</button>';
   updateButtons();
 }
 
@@ -618,7 +635,36 @@ function toast(msg) {
   toast.timer = setTimeout(() => t.classList.remove('show'), 1800);
 }
 
+function refreshAll() {
+  save();
+  applyCarrotSkin();
+  applyCursorSkin();
+  renderShop();
+  render();
+}
+
+// modded mode: remember the real save, then give 1B carrots and unlock everything
+function enterModded() {
+  state.backup = JSON.parse(JSON.stringify(state));
+  state.modded = true;
+  state.carrots = 1e9;
+  for (const u of UPGRADES) state[u.key] = u.max || Math.max(state[u.key], 10);
+  for (const [kind, list] of Object.values(SKIN_TABS)) state[kind + 'Skins'] = list.map(s => s.id);
+  refreshAll();
+  toast('🔓 Modded mode: everything unlocked!');
+}
+// normal mode: put the real save back exactly how it was
+function exitModded() {
+  state = Object.assign(fresh(), state.backup, { modded: false, backup: null });
+  refreshAll();
+  toast('↩️ Back to normal mode');
+}
+
 $('list').addEventListener('click', e => {
+  if (e.target.id === 'modBtn') {
+    state.modded ? exitModded() : enterModded();
+    return;
+  }
   if (e.target.id === 'reset') {
     if (confirm('Reset all progress?')) { state = fresh(); save(); applyCarrotSkin(); applyCursorSkin(); renderShop(); render(); }
     return;
@@ -681,6 +727,7 @@ function render() {
   $('clicks').textContent = fmt(state.clicks);
   $('perSec').textContent = fmt(perSec());
   $('multi').textContent = clickValue() + 'x';
+  $('modChip').hidden = !state.modded;
   $('shopBal').textContent = fmt(state.carrots);
   document.title = `${fmt(state.carrots)} ${$('carrots').lastChild.textContent} · Carrot Clicker`;
   updateButtons();
@@ -693,6 +740,12 @@ function tick(now) {
   render();
   requestAnimationFrame(tick);
 }
+
+// auto clickers visibly "tap" the carrot once a second
+setInterval(() => {
+  if (!state.autos) return;
+  floatAboveCarrot('+' + fmt(state.autos * autoValue()));
+}, 1000);
 
 
 // ---------- golden carrots: random bonus that pops up somewhere on screen ----------
