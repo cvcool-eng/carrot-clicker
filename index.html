@@ -212,12 +212,13 @@
 <button id="golden" aria-label="Golden carrot">🥕</button>
 
 <script>
+// boost: the equipped skin multiplies carrots per click (and per auto click)
 const CARROT_SKINS = [
-  { id: 'classic', name: 'Classic',  cost: 0,      b1: '#ff9a3c', b2: '#f26200', ridge: '#cc4f00', l1: '#5fd36a', l2: '#3aa84a' },
-  { id: 'golden',  name: 'Golden',   cost: 5000,   b1: '#ffe27a', b2: '#f2b600', ridge: '#c99500', l1: '#8fdc78', l2: '#4fae4a' },
-  { id: 'purple',  name: 'Purple',   cost: 15000,  b1: '#c890ff', b2: '#8040e0', ridge: '#6a2fc0', l1: '#5fd36a', l2: '#3aa84a' },
-  { id: 'frozen',  name: 'Frozen',   cost: 40000,  b1: '#e3f6ff', b2: '#7cc8f2', ridge: '#4ea6d6', l1: '#b4f0e8', l2: '#6bcfc0' },
-  { id: 'midnight',name: 'Midnight', cost: 100000, b1: '#5a5f8a', b2: '#23263f', ridge: '#11131f', l1: '#7a86ff', l2: '#4450d8' },
+  { id: 'classic', name: 'Classic',  cost: 0,      boost: 1,  b1: '#ff9a3c', b2: '#f26200', ridge: '#cc4f00', l1: '#5fd36a', l2: '#3aa84a' },
+  { id: 'golden',  name: 'Golden',   cost: 5000,   boost: 2,  b1: '#ffe27a', b2: '#f2b600', ridge: '#c99500', l1: '#8fdc78', l2: '#4fae4a' },
+  { id: 'purple',  name: 'Purple',   cost: 15000,  boost: 3,  b1: '#c890ff', b2: '#8040e0', ridge: '#6a2fc0', l1: '#5fd36a', l2: '#3aa84a' },
+  { id: 'frozen',  name: 'Frozen',   cost: 40000,  boost: 5,  b1: '#e3f6ff', b2: '#7cc8f2', ridge: '#4ea6d6', l1: '#b4f0e8', l2: '#6bcfc0' },
+  { id: 'midnight',name: 'Midnight', cost: 100000, boost: 10, b1: '#5a5f8a', b2: '#23263f', ridge: '#11131f', l1: '#7a86ff', l2: '#4450d8' },
 ];
 
 // a bunny wearing a little crown, for the shop icon
@@ -291,7 +292,9 @@ if (!state.tapSkins.includes('ripple')) state.tapSkins.push('ripple');
 const save = () => { state.lastSeen = Date.now(); try { localStorage.setItem(SAVE_KEY, JSON.stringify(state)); } catch {} };
 
 const $ = id => document.getElementById(id);
-const autoValue = () => state.mult * 2 ** state.turbo;   // carrots per auto clicker per second
+const skinBoost = () => (CARROT_SKINS.find(s => s.id === state.carrotSkin) || CARROT_SKINS[0]).boost;
+const clickValue = () => state.mult * skinBoost();        // carrots per click
+const autoValue = () => clickValue() * 2 ** state.turbo;  // carrots per auto clicker per second
 const perSec = () => state.autos * autoValue() + state.farms * 10 + state.tractors * 80;
 const critChance = () => state.crit * .05;
 
@@ -503,7 +506,7 @@ function bump(el) {
 
 $('carrotBtn').addEventListener('pointerdown', e => {
   const crit = Math.random() < critChance();
-  const gain = state.mult * (crit ? 10 : 1);
+  const gain = clickValue() * (crit ? 10 : 1);
   state.carrots += gain;
   state.clicks++;
   squish();
@@ -583,7 +586,9 @@ function skinRow(s, i, kind) {
   const btn = equipped ? '<button class="buy done" disabled>Equipped</button>'
     : owned ? `<button class="buy ghost" data-action="equip-${kind}:${s.id}">Equip</button>`
     : buyBtn(`skin-${kind}:${s.id}`, s.cost);
-  return itemHTML({ ico, name: s.name, desc: s.cost ? (owned ? 'Owned' : SKIN_LABEL[kind]) : 'Free', btn, equipped, i });
+  let desc = s.cost ? (owned ? 'Owned' : SKIN_LABEL[kind]) : 'Free';
+  if (s.boost) desc = `<b style="color:var(--accent)">${s.boost}x carrots per click</b> · ${desc}`;
+  return itemHTML({ ico, name: s.name, desc, btn, equipped, i });
 }
 
 function renderShop() {
@@ -680,7 +685,7 @@ function render() {
   $('clicksLabel').textContent = state.clicks === 1 ? 'click' : 'clicks';
   $('clicks').textContent = fmt(state.clicks);
   $('perSec').textContent = fmt(perSec());
-  $('multi').textContent = state.mult + 'x';
+  $('multi').textContent = clickValue() + 'x';
   $('shopBal').textContent = fmt(state.carrots);
   document.title = `${fmt(state.carrots)} ${$('carrots').lastChild.textContent} · Carrot Clicker`;
   updateButtons();
@@ -729,7 +734,7 @@ $('golden').addEventListener('pointerdown', e => {
   const g = $('golden');
   if (g.flight) g.flight.cancel();
   g.style.display = 'none';
-  const reward = Math.max(100, perSec() * 60, state.mult * 50) * (1 + state.golden * .5);
+  const reward = Math.max(100, perSec() * 60, clickValue() * 50) * (1 + state.golden * .5);
   state.carrots += reward;
   burst(e.clientX, e.clientY);
   spawnFloat('+' + fmt(reward), e.clientX, e.clientY, 'gold');
