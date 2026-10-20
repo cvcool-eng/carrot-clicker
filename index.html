@@ -135,7 +135,14 @@
   .mod-btn:hover { transform: translateY(-2px); background: #ece1ff; }
   .mod-btn.normal { border: 2px solid var(--text); background: var(--text); color: #fff; }
   .mod-btn.normal:hover { background: #000; }
-  .reset { display: block; margin: 8px auto 0; border: none; background: none; color: var(--muted); font: inherit; font-size: 13px; text-decoration: underline; cursor: pointer; }
+  .reset {
+    display: block; width: 100%; margin-top: 10px; padding: 14px; border: none; border-radius: 16px;
+    background: #e5383b; color: #fff; font: inherit; font-weight: 700; cursor: pointer;
+    transition: transform .2s var(--ease), background .2s;
+  }
+  .reset:hover { transform: translateY(-2px); background: #d02a2d; }
+  .reset.confirming { background: #a4161a; animation: shake .35s; }
+  @keyframes shake { 25% { transform: translateX(-4px); } 75% { transform: translateX(4px); } }
 
   #toast {
     position: fixed; left: 50%; bottom: 28px; transform: translate(-50%, 120px); background: var(--text); color: #fff;
@@ -625,7 +632,7 @@ function renderShop() {
   const modBtn = state.modded
     ? '<button class="mod-btn normal" id="modBtn">↩️ Back to normal mode</button>'
     : '<button class="mod-btn" id="modBtn">🔓 Unlock all (modded)</button>';
-  $('list').innerHTML = html + modBtn + '<button class="reset" id="reset">Reset progress</button>';
+  $('list').innerHTML = html + modBtn + '<button class="reset" id="reset">🗑️ Reset all progress</button>';
   updateButtons();
 }
 
@@ -674,8 +681,25 @@ $('list').addEventListener('click', e => {
     state.modded ? exitModded() : enterModded();
     return;
   }
+  // ask inside the game instead of using confirm(), which some browsers block:
+  // first click asks "are you sure?", a second click within 4 seconds resets
   if (e.target.id === 'reset') {
-    if (confirm('Reset all progress?')) { state = fresh(); refreshAll(); }
+    const r = e.target;
+    if (!r.classList.contains('confirming')) {
+      r.classList.add('confirming');
+      r.textContent = '⚠️ Are you sure? Click again to reset everything';
+      clearTimeout(r.timer);
+      r.timer = setTimeout(() => { r.classList.remove('confirming'); r.textContent = '🗑️ Reset all progress'; }, 4000);
+      return;
+    }
+    clearTimeout(r.timer);
+    state = fresh();
+    $('goldTint').classList.remove('on');
+    document.querySelectorAll('.golden').forEach(g => g.remove());
+    clearTimeout(goldenTimer);
+    scheduleGolden(true);
+    refreshAll();
+    toast('🗑️ Progress reset');
     return;
   }
   const btn = e.target.closest('.buy');
