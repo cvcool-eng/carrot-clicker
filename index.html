@@ -682,7 +682,7 @@ function render() {
   $('perSec').textContent = fmt(perSec());
   $('multi').textContent = state.mult + 'x';
   $('shopBal').textContent = fmt(state.carrots);
-  document.title = `${fmt(state.carrots)} carrots · Carrot Clicker`;
+  document.title = `${fmt(state.carrots)} ${$('carrots').lastChild.textContent} · Carrot Clicker`;
   updateButtons();
 }
 
