@@ -334,8 +334,10 @@ const UPGRADES = [
     desc: () => 'Harvests 80 carrots every second',
     cost: n => Math.round(100000 * 1.3 ** n), toast: '🚜 Tractor bought!' },
   { key: 'golden', ico: '✨', name: 'Golden Soil', tag: n => `Lv ${n}`, max: 3,
-    desc: () => 'Golden carrots show up more often and give more',
-    cost: n => Math.round(3000 * 4 ** n), toast: '✨ Golden carrots incoming!' },
+    desc: n => n < 3 ? `Next: golden carrots ${SOIL_PERKS[n + 1]}` : `Golden carrots ${SOIL_PERKS[3]}`,
+    cost: n => Math.round(3000 * 4 ** n), toast: '✨ Golden Soil upgraded! Here comes one now!',
+    // show it off right away: a golden carrot flies in and the timer restarts at the new speed
+    after: () => { clearTimeout(goldenTimer); spawnGolden(); applySoil(); } },
   { key: 'cellar', ico: '🏚️', name: 'Carrot Cellar', max: 1,
     desc: () => 'Keep earning 50% of your carrots/sec while the game is closed (up to 8 hours)',
     cost: () => 25000, toast: '🏚️ Your cellar will collect carrots while you\'re away!' },
@@ -645,6 +647,7 @@ function refreshAll() {
   save();
   applyCarrotSkin();
   applyCursorSkin();
+  applySoil();
   renderShop();
   render();
 }
@@ -672,7 +675,7 @@ $('list').addEventListener('click', e => {
     return;
   }
   if (e.target.id === 'reset') {
-    if (confirm('Reset all progress?')) { state = fresh(); save(); applyCarrotSkin(); applyCursorSkin(); renderShop(); render(); }
+    if (confirm('Reset all progress?')) { state = fresh(); refreshAll(); }
     return;
   }
   const btn = e.target.closest('.buy');
@@ -734,7 +737,8 @@ function render() {
   $('perSec').textContent = fmt(perSec());
   $('multi').textContent = clickValue() + 'x';
   $('modChip').hidden = !state.modded;
-  $('goldCount').textContent = fmt(state.goldenCaught);  $('shopBal').textContent = fmt(state.carrots);
+  $('goldCount').textContent = fmt(state.goldenCaught);
+  $('shopBal').textContent = fmt(state.carrots);
   document.title = `${fmt(state.carrots)} ${$('carrots').lastChild.textContent} · Carrot Clicker`;
   updateButtons();
 }
@@ -755,14 +759,29 @@ setInterval(() => {
 
 
 // ---------- golden carrots: random bonus that pops up somewhere on screen ----------
+// Golden Soil levels: how much more often golden carrots come, and how much they're worth
+const SOIL_PERKS = ['', '2.5x as often · worth 2x', '4x as often · worth 3x · fly slower',
+  '5.5x as often · worth 4x · fly slower · sometimes come in pairs'];
+const soilFreq = () => 1 + state.golden * 1.5;
+const soilWorth = () => 1 + state.golden;
+
 let goldenTimer;
 function scheduleGolden(first) {
   const secs = (first ? 30 : 60) + Math.random() * 60;
-  goldenTimer = setTimeout(spawnGolden, secs / (1 + state.golden * .5) * 1000);
+  goldenTimer = setTimeout(spawnGolden, secs / soilFreq() * 1000);
 }
 function spawnGolden() {
-  flyGolden();
+  const duration = state.golden >= 2 ? 12000 : 9000;
+  flyGolden({ duration });
+  if (state.golden >= 3 && Math.random() < .35) setTimeout(() => flyGolden({ duration }), 700);
   scheduleGolden();
+}
+
+// the carrot's shadow glows gold, brighter with each Golden Soil level
+function applySoil() {
+  const s = document.querySelector('.shadow'), n = state.golden;
+  s.style.background = n ? `rgba(255, 196, 40, ${.25 + n * .1})` : '';
+  s.style.boxShadow = n ? `0 0 ${16 + n * 14}px ${4 + n * 4}px rgba(255, 200, 40, ${.25 + n * .12})` : '';
 }
 
 // one golden carrot flying across the screen (left→right or right→left) in a wavy line
@@ -793,7 +812,7 @@ function flyGolden({ duration = 9000, rush = false } = {}) {
 
 function catchGolden(x, y, rush) {
   // rush carrots are worth a quarter each, since there are so many
-  const reward = Math.max(100, perSec() * 60, clickValue() * 50) * (1 + state.golden * .5) / (rush ? 4 : 1);
+  const reward = Math.max(100, perSec() * 60, clickValue() * 50) * soilWorth() / (rush ? 4 : 1);
   state.carrots += reward;
   state.goldenCaught++;
   burst(x, y);
@@ -828,6 +847,7 @@ if (state.cellar && state.lastSeen) {
 }
 
 scheduleGolden(true);
+applySoil();
 applyCarrotSkin();
 applyCursorSkin();
 addEventListener('resize', moveTabPill);
