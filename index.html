@@ -212,7 +212,7 @@
 <button id="golden" aria-label="Golden carrot">🥕</button>
 
 <script>
-// boost: the equipped skin multiplies carrots per click (and per auto click)
+// boost: the equipped skin multiplies carrots per click
 const CARROT_SKINS = [
   { id: 'classic', name: 'Classic',  cost: 0,      boost: 1,  b1: '#ff9a3c', b2: '#f26200', ridge: '#cc4f00', l1: '#5fd36a', l2: '#3aa84a' },
   { id: 'golden',  name: 'Golden',   cost: 5000,   boost: 2,  b1: '#ffe27a', b2: '#f2b600', ridge: '#c99500', l1: '#8fdc78', l2: '#4fae4a' },
@@ -268,16 +268,15 @@ const TRAILS = [
 
 const TAPS = [
   { id: 'ripple',   name: 'Ripple',           cost: 0,      icon: '⭕' },
-  { id: 'stars',    name: 'Star Pop',         cost: 30000,  icon: '🌟' },
-  { id: 'carrots',  name: 'Carrot Explosion', cost: 75000,  icon: '🥕' },
-  { id: 'firework', name: 'Firework',         cost: 200000, icon: '🎆' },
+  { id: 'stars',    name: 'Star Pop',         cost: 15000,  icon: '🌟' },
+  { id: 'carrots',  name: 'Carrot Explosion', cost: 40000,  icon: '🥕' },
+  { id: 'firework', name: 'Firework',         cost: 100000, icon: '🎆' },
 ];
 
-const autoCost = n => Math.round(1000 * 1.3 ** n);       // 1000, 1300, 1690, ...
 const multCost = m => Math.round(250 * 4 ** (m - 1));     // 2x: 250, 3x: 1000, 4x: 4000, ...
 
 const SAVE_KEY = 'carrotClickerSave';
-const fresh = () => ({ carrots: 0, clicks: 0, autos: 0, mult: 1,
+const fresh = () => ({ carrots: 0, clicks: 0, mult: 1,
   carrotSkins: ['classic'], carrotSkin: 'classic', cursorSkins: ['default'], cursorSkin: 'default',
   trailSkins: ['none'], trailSkin: 'none', tapSkins: ['ripple'], tapSkin: 'ripple',
   crit: 0, turbo: 0, farms: 0, tractors: 0, golden: 0, cellar: 0, lastSeen: Date.now() });
@@ -294,15 +293,11 @@ const save = () => { state.lastSeen = Date.now(); try { localStorage.setItem(SAV
 const $ = id => document.getElementById(id);
 const skinBoost = () => (CARROT_SKINS.find(s => s.id === state.carrotSkin) || CARROT_SKINS[0]).boost;
 const clickValue = () => state.mult * skinBoost();        // carrots per click
-const autoValue = () => clickValue() * 2 ** state.turbo;  // carrots per auto clicker per second
-const perSec = () => state.autos * autoValue() + state.farms * 10 + state.tractors * 80;
+const perSec = () => (state.farms * 10 + state.tractors * 80) * 2 ** state.turbo;
 const critChance = () => state.crit * .05;
 
 // every upgrade levels up state[key] by 1 when bought
 const UPGRADES = [
-  { key: 'autos', ico: '🖱️', name: 'Auto Clicker', tag: n => `${n} owned`,
-    desc: () => `Clicks the carrot once every second (+${fmt(autoValue())}/sec)`,
-    cost: autoCost, toast: '🖱️ Auto Clicker bought!' },
   { key: 'mult', ico: '✖️', name: 'Carrot Multiplier', tag: n => `${n}x`,
     desc: n => `Upgrade to ${n + 1}x carrots per click`,
     cost: multCost, toast: () => `✖️ Multiplier is now ${state.mult}x!` },
@@ -310,8 +305,8 @@ const UPGRADES = [
     desc: n => n < 10 ? `${(n + 1) * 5}% chance for a 10x CRIT click` : '50% chance for a 10x CRIT click',
     cost: n => Math.round(2000 * 2.2 ** n), toast: '🍀 Your clicks feel luckier!' },
   { key: 'turbo', ico: '⚙️', name: 'Turbo Gears', tag: n => `Lv ${n}`, max: 5,
-    desc: () => 'Auto clickers make 2x carrots',
-    cost: n => Math.round(5000 * 5 ** n), toast: '⚙️ Auto clickers sped up!' },
+    desc: () => 'Farms and tractors make 2x carrots',
+    cost: n => Math.round(5000 * 5 ** n), toast: '⚙️ Farms and tractors sped up!' },
   { key: 'farms', ico: '🌱', name: 'Carrot Farm', tag: n => `${n} owned`,
     desc: () => 'Grows 10 carrots every second',
     cost: n => Math.round(12000 * 1.3 ** n), toast: '🌱 New carrot farm!' },
@@ -699,11 +694,6 @@ function tick(now) {
   requestAnimationFrame(tick);
 }
 
-// auto clickers visibly "tap" the carrot once a second
-setInterval(() => {
-  if (!state.autos) return;
-  floatAboveCarrot('+' + fmt(perSec()));
-}, 1000);
 
 // ---------- golden carrots: random bonus that pops up somewhere on screen ----------
 let goldenTimer;
