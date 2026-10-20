@@ -20,7 +20,7 @@
   html, body { height: 100%; }
   body {
     margin: 0; font-family: "Inter", "Segoe UI", system-ui, sans-serif; color: var(--text);
-    background: radial-gradient(circle at 50% 45%, #fff 0%, var(--bg-soft) 75%); overflow: hidden;
+    background: var(--world-bg, radial-gradient(circle at 50% 45%, #fff 0%, var(--bg-soft) 75%)); overflow: hidden;
     user-select: none; -webkit-user-select: none; -webkit-touch-callout: none; touch-action: manipulation;
   }
   button { -webkit-tap-highlight-color: transparent; }
@@ -92,8 +92,8 @@
   .shop-head { display: flex; align-items: center; justify-content: space-between; padding: 20px 20px 8px; }
   .shop-head h2 { margin: 0; font-size: 22px; }
   .shop-head .bal { color: var(--muted); font-size: 14px; margin-top: 2px; }
-  #closeShop { border: none; background: var(--bg-soft); width: 36px; height: 36px; border-radius: 50%; font-size: 18px; cursor: pointer; transition: transform .2s var(--ease), background .2s; }
-  #closeShop:hover { transform: rotate(90deg); background: var(--line); }
+  #closeShop, #closePortal { border: none; background: var(--bg-soft); width: 36px; height: 36px; border-radius: 50%; font-size: 18px; cursor: pointer; transition: transform .2s var(--ease), background .2s; }
+  #closeShop:hover, #closePortal:hover { transform: rotate(90deg); background: var(--line); }
 
   .tabs { display: flex; gap: 6px; margin: 8px 20px 4px; padding: 4px; background: var(--bg-soft); border-radius: 14px; position: relative; }
   .tab { flex: 1; border: none; background: none; font: inherit; font-weight: 600; font-size: 13px; color: var(--muted); padding: 9px 4px; border-radius: 10px; cursor: pointer; position: relative; z-index: 1; transition: color .2s; }
@@ -150,16 +150,85 @@
   }
   #toast.show { transform: translate(-50%, 0); }
 
+  /* ---------- carrot portal ---------- */
+  #portalBtn {
+    position: fixed; right: 24px; top: calc(50% + 64px); z-index: 10;
+    border: none; color: #fff; font: inherit; font-weight: 700; font-size: 13px; line-height: 1.15;
+    background: linear-gradient(135deg, #8a4dff, #2f8be0); padding: 12px 10px; width: 92px; border-radius: 18px; cursor: pointer;
+    box-shadow: 0 10px 30px rgba(90, 60, 220, .3);
+    display: flex; flex-direction: column; align-items: center; gap: 4px;
+    transition: transform .3s var(--ease), opacity .25s;
+  }
+  #portalBtn .icon { font-size: 24px; display: inline-block; animation: spin 4s linear infinite; }
+  #portalBtn:hover { transform: scale(1.06); }
+  @keyframes spin { to { transform: rotate(360deg); } }
+  body.shop-open #portalBtn, body.portal-open #portalBtn, body.portal-open #shopBtn { opacity: 0; pointer-events: none; }
+
+  #portalScrim { position: fixed; inset: 0; background: rgba(20,24,32,.3); opacity: 0; pointer-events: none; transition: opacity .3s; z-index: 21; }
+  body.portal-open #portalScrim { opacity: 1; pointer-events: auto; }
+  #portal {
+    position: fixed; left: 50%; top: 50%; z-index: 22; width: min(460px, calc(100vw - 24px)); max-height: calc(100vh - 40px);
+    background: #fff; border-radius: 24px; box-shadow: 0 20px 60px rgba(20,24,32,.25); display: flex; flex-direction: column;
+    transform: translate(-50%, -50%) scale(.9); opacity: 0; pointer-events: none; transition: transform .35s var(--ease), opacity .25s;
+  }
+  body.portal-open #portal { transform: translate(-50%, -50%) scale(1); opacity: 1; pointer-events: auto; }
+  .world-ico { width: 100%; height: 100%; border-radius: 14px; display: grid; place-items: center; }
+
+  #warp {
+    position: fixed; left: 50%; top: 50%; width: 260vmax; height: 260vmax; margin: -130vmax 0 0 -130vmax; border-radius: 50%;
+    z-index: 50; pointer-events: none; opacity: 0;
+    background: radial-gradient(circle, #fff 0 12%, transparent 40%), conic-gradient(#8a4dff, #2f8be0, #5fd36a, #ff7a1a, #8a4dff);
+  }
+
+  /* ---------- worlds ---------- */
+  #carrots { color: var(--hud, inherit); text-shadow: var(--hud-shadow, none); }
+  body.world-water  { --world-bg: radial-gradient(circle at 50% 40%, #effaff 0%, #a6dcf5 55%, #4fa9d9 100%); --hud: #0d3b57; }
+  body.world-lava   { --world-bg: radial-gradient(circle at 50% 45%, #6b200f 0%, #2e0a05 65%, #150302 100%); --hud: #fff; --hud-shadow: 0 2px 16px rgba(255,100,20,.6); }
+  body.world-jungle { --world-bg: radial-gradient(circle at 50% 40%, #f0f9e6 0%, #acdc8e 55%, #4a9437 100%); --hud: #1f3d17; }
+  body.world-space  { --world-bg: radial-gradient(circle at 50% 40%, #1d2256 0%, #0b0d26 60%, #03040d 100%); --hud: #fff; --hud-shadow: 0 2px 16px rgba(120,140,255,.6); }
+  #ambient { position: fixed; inset: 0; pointer-events: none; overflow: hidden; }
+  #ambient > div { position: absolute; }
+  .star { width: 2px; height: 2px; border-radius: 50%; background: #fff; animation: twinkle var(--d) ease-in-out infinite; }
+  @keyframes twinkle { 50% { opacity: .15; } }
+
+  /* ---------- ending ---------- */
+  #endModal {
+    position: fixed; inset: 0; z-index: 45; background: rgba(10,12,30,.55); display: grid; place-items: center;
+    opacity: 0; pointer-events: none; transition: opacity .35s;
+  }
+  #endModal.show { opacity: 1; pointer-events: auto; }
+  .end-card {
+    background: #fff; border-radius: 28px; padding: 32px 26px 24px; width: min(440px, calc(100vw - 32px)); text-align: center;
+    box-shadow: 0 30px 80px rgba(0,0,0,.35); transform: scale(.85); transition: transform .45s var(--ease);
+  }
+  #endModal.show .end-card { transform: scale(1); }
+  .end-card .big { font-size: 64px; line-height: 1; }
+  .end-card h2 { margin: 12px 0 6px; font-size: 28px; }
+  .end-card p { margin: 0 0 18px; color: var(--muted); line-height: 1.45; }
+  .end-stats { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; margin-bottom: 18px; }
+  .end-stats div { background: var(--bg-soft); border-radius: 14px; padding: 12px 4px; font-size: 12px; color: var(--muted); }
+  .end-stats b { display: block; font-size: 18px; color: var(--text); }
+  .big-btn {
+    display: block; width: 100%; margin-top: 8px; padding: 14px; border: none; border-radius: 16px;
+    font: inherit; font-weight: 700; cursor: pointer; transition: transform .2s var(--ease);
+  }
+  .big-btn:hover { transform: translateY(-2px); }
+  .big-btn.primary { background: var(--accent); color: #fff; }
+  .big-btn.dark { background: var(--text); color: #fff; }
+  .big-btn.light { background: var(--bg-soft); color: var(--text); }
+
   @media (max-width: 600px) {
     #shopBtn { top: auto; bottom: 20px; transform: none; flex-direction: row; padding: 14px 20px; }
     #shopBtn:hover { transform: scale(1.04); }
     body.shop-open #shopBtn { transform: translateX(40px); }
+    #portalBtn { top: auto; bottom: 20px; right: 140px; width: auto; flex-direction: row; padding: 14px 16px; font-size: 14px; }
     .carrot-wrap { width: 280px; height: 280px; }
     #carrotBtn { width: 170px; height: 220px; }
   }
 </style>
 </head>
 <body>
+<div id="ambient"></div>
 <header>
   <div id="carrots">0<small>carrots</small></div>
   <div class="stats">
@@ -167,7 +236,9 @@
     <span class="chip" id="goldChip">✨ <b id="goldCount" style="display:inline-block">0</b> golden</span>
     <span class="chip">⏱️ <b id="perSec">0</b> / sec</span>
     <span class="chip">✖️ <b id="multi">1x</b> multiplier</span>
+    <span class="chip" id="worldChip">🌾 <b id="worldName">Carrot Farm</b></span>
     <span class="chip" id="modChip" style="color:#6a2fc0;border-color:#cdb4ff" hidden>🛠️ <b style="color:#6a2fc0">Modded</b></span>
+    <span class="chip" id="beatChip" style="color:#b8860b;border-color:#f2d27a" hidden>🏆 <b style="color:#b8860b">Game beaten</b></span>
   </div>
 </header>
 
@@ -229,6 +300,19 @@
   </div>
   <div class="list" id="list"></div>
 </aside>
+
+<button id="portalBtn"><span class="icon">🌀</span>Carrot Portal</button>
+<div id="portalScrim"></div>
+<div id="portal" role="dialog" aria-label="Carrot Portal">
+  <div class="shop-head">
+    <div><h2>🌀 Carrot Portal</h2><div class="bal">Travel to new worlds. Each one multiplies all your carrots.</div></div>
+    <button id="closePortal" aria-label="Close portal">✕</button>
+  </div>
+  <div class="list" id="worldList"></div>
+</div>
+
+<div id="endModal"><div class="end-card" id="endCard"></div></div>
+<div id="warp"></div>
 
 <div id="toast"></div>
 <div id="goldTint"></div>
@@ -295,6 +379,20 @@ const TAPS = [
   { id: 'firework', name: 'Firework',         cost: 100000, icon: '🎆' },
 ];
 
+// Carrot Portal worlds, unlocked in order; the current world multiplies all carrots
+const WORLDS = [
+  { id: 'normal', name: 'Carrot Farm',  emoji: '🌾', cost: 0,       boost: 1,  desc: 'Where it all began',
+    bg: 'linear-gradient(160deg, #ffffff, #e9ecf1)' },
+  { id: 'water',  name: 'Water World',  emoji: '🌊', cost: 30000,   boost: 2,  desc: 'Bubbles rise all around you',
+    bg: 'linear-gradient(160deg, #e9f8ff, #4fa9d9)' },
+  { id: 'lava',   name: 'Lava World',   emoji: '🌋', cost: 50000,   boost: 3,  desc: 'Hot embers float up from below',
+    bg: 'linear-gradient(160deg, #ff8a3c, #4a1208)' },
+  { id: 'jungle', name: 'Jungle World', emoji: '🌴', cost: 100000,  boost: 5,  desc: 'Leaves drift down from the trees',
+    bg: 'linear-gradient(160deg, #eaf7df, #4a9437)' },
+  { id: 'space',  name: 'Space World',  emoji: '🚀', cost: 1000000, boost: 10, desc: 'The final world. Reach 1M carrots here to beat the game',
+    bg: 'linear-gradient(160deg, #2a2f6a, #04050f)' },
+];
+
 const autoCost = n => Math.round(1000 * 1.3 ** n);       // 1000, 1300, 1690, ...
 const multCost = m => Math.round(250 * 4 ** (m - 1));     // 2x: 250, 3x: 1000, 4x: 4000, ...
 
@@ -302,22 +400,26 @@ const SAVE_KEY = 'carrotClickerSave';
 const fresh = () => ({ carrots: 0, clicks: 0, autos: 0, mult: 1,
   carrotSkins: ['classic'], carrotSkin: 'classic', cursorSkins: ['default'], cursorSkin: 'default',
   trailSkins: ['none'], trailSkin: 'none', tapSkins: ['ripple'], tapSkin: 'ripple',
-  crit: 0, turbo: 0, farms: 0, tractors: 0, golden: 0, cellar: 0, goldenCaught: 0, lastSeen: Date.now() });
+  crit: 0, turbo: 0, farms: 0, tractors: 0, golden: 0, cellar: 0, goldenCaught: 0, lastSeen: Date.now(),
+  world: 'normal', worldsUnlocked: ['normal'], endOffered: false, ended: false });
 let state = fresh();
 try { Object.assign(state, JSON.parse(localStorage.getItem(SAVE_KEY)) || {}); } catch {}
 // fall back to the default if an equipped item was removed from the game
 if (!CARROT_SKINS.some(t => t.id === state.carrotSkin)) state.carrotSkin = 'classic';
 if (!CURSOR_SKINS.some(t => t.id === state.cursorSkin)) state.cursorSkin = 'default';
 if (!TRAILS.some(t => t.id === state.trailSkin)) state.trailSkin = 'none';
+if (!WORLDS.some(w => w.id === state.world)) state.world = 'normal';
 if (!TAPS.some(t => t.id === state.tapSkin)) state.tapSkin = 'ripple';
 if (!state.tapSkins.includes('ripple')) state.tapSkins.push('ripple');
 const save = () => { state.lastSeen = Date.now(); try { localStorage.setItem(SAVE_KEY, JSON.stringify(state)); } catch {} };
 
 const $ = id => document.getElementById(id);
 const skinBoost = () => (CARROT_SKINS.find(s => s.id === state.carrotSkin) || CARROT_SKINS[0]).boost;
-const clickValue = () => state.mult * skinBoost();        // carrots per click
+const worldOf = id => WORLDS.find(w => w.id === id) || WORLDS[0];
+const worldBoost = () => worldOf(state.world).boost;
+const clickValue = () => state.mult * skinBoost() * worldBoost();  // carrots per click
 const autoValue = () => clickValue() * 2 ** state.turbo;  // carrots per auto clicker per second
-const perSec = () => state.autos * autoValue() + (state.farms * 10 + state.tractors * 80) * 2 ** state.turbo;
+const perSec = () => state.autos * autoValue() + (state.farms * 10 + state.tractors * 80) * 2 ** state.turbo * worldBoost();
 const critChance = () => state.crit * .05;
 
 // every upgrade levels up state[key] by 1 when bought
@@ -650,11 +752,192 @@ function toast(msg) {
   toast.timer = setTimeout(() => t.classList.remove('show'), 1800);
 }
 
+// ---------- worlds ----------
+function applyWorld() {
+  const w = worldOf(state.world);
+  for (const x of WORLDS) document.body.classList.toggle('world-' + x.id, x.id === w.id);
+  $('worldChip').firstChild.textContent = w.emoji + ' ';
+  $('worldName').textContent = w.name + (w.boost > 1 ? ` · ${w.boost}x` : '');
+  startAmbient(w.id);
+}
+
+// background effects for each world
+const rnd = (a, b) => a + Math.random() * (b - a);
+function ambientPiece(css) {
+  const el = document.createElement('div');
+  el.style.cssText = css;
+  $('ambient').appendChild(el);
+  return el;
+}
+function rise(css, size, dur, wobble) {
+  const el = ambientPiece(`${css};width:${size}px;height:${size}px;left:${rnd(0, 100)}%;top:100%`);
+  const dx = rnd(-wobble, wobble);
+  el.animate([
+    { transform: 'translate(0, 0)', opacity: 0 },
+    { transform: `translate(${dx}px, ${-innerHeight * .5}px)`, opacity: 1, offset: .4 },
+    { transform: `translate(${-dx}px, ${-innerHeight - 60}px)`, opacity: 0 },
+  ], { duration: dur, easing: 'linear' }).onfinish = () => el.remove();
+}
+const AMBIENT = {
+  water: () => rise('border:2px solid rgba(255,255,255,.8);background:rgba(255,255,255,.18);border-radius:50%', rnd(6, 20), rnd(6000, 10000), 30),
+  lava: () => {
+    const c = ['#ffd166', '#ff9a3c', '#ff5a1a'][Math.random() * 3 | 0];
+    rise(`background:${c};border-radius:50%;box-shadow:0 0 10px 2px ${c}`, rnd(3, 7), rnd(4000, 7000), 40);
+  },
+  jungle: () => {
+    const el = ambientPiece(`width:16px;height:9px;border-radius:0 100% 0 100%;left:${rnd(0, 100)}%;top:-20px;` +
+      `background:${['#4caf50', '#7cc35a', '#2e7d32'][Math.random() * 3 | 0]}`);
+    const dx = rnd(-120, 120), spin = rnd(360, 900);
+    el.animate([
+      { transform: 'translate(0, 0) rotate(0deg)', opacity: .9 },
+      { transform: `translate(${dx}px, ${innerHeight + 40}px) rotate(${spin}deg)`, opacity: .9 },
+    ], { duration: rnd(7000, 11000), easing: 'ease-in-out' }).onfinish = () => el.remove();
+  },
+  space: () => {  // shooting star
+    const el = ambientPiece(`width:90px;height:2px;left:${rnd(0, 60)}%;top:${rnd(0, 45)}%;` +
+      'background:linear-gradient(270deg, #fff, transparent);border-radius:2px');
+    el.animate([
+      { transform: 'translate(0, 0) rotate(21.8deg)', opacity: 0 },
+      { opacity: 1, offset: .2 },
+      { transform: 'translate(320px, 128px) rotate(21.8deg)', opacity: 0 },
+    ], { duration: 900, easing: 'ease-out' }).onfinish = () => el.remove();
+  },
+};
+let ambientTimer;
+function startAmbient(id) {
+  clearInterval(ambientTimer);
+  $('ambient').innerHTML = '';
+  if (id === 'space') {
+    for (let i = 0; i < 90; i++) {
+      const s = ambientPiece(`left:${rnd(0, 100)}%;top:${rnd(0, 100)}%;--d:${rnd(2, 5)}s;animation-delay:-${rnd(0, 5)}s`);
+      s.className = 'star';
+      s.style.width = s.style.height = rnd(1, 3) + 'px';
+    }
+  }
+  if (!AMBIENT[id]) return;
+  ambientTimer = setInterval(() => { if (!document.hidden) AMBIENT[id](); }, id === 'space' ? 2500 : 450);
+}
+
+// ---------- carrot portal ----------
+let portalKey = '';
+function renderPortal() {
+  $('worldList').innerHTML = WORLDS.map((w, i) => {
+    const unlocked = state.worldsUnlocked.includes(w.id);
+    const current = state.world === w.id;
+    const reachable = i === 0 || state.worldsUnlocked.includes(WORLDS[i - 1].id);
+    let btn;
+    if (current && w.id === 'space' && state.carrots >= 1e6) btn = '<button class="buy" data-end>🏁 End game</button>';
+    else if (current) btn = '<button class="buy done" disabled>You\'re here</button>';
+    else if (unlocked) btn = `<button class="buy ghost" data-world="${w.id}">Travel</button>`;
+    else if (reachable) btn = `<button class="buy" data-world="${w.id}" data-cost="${w.cost}">🥕 ${fmt(w.cost)}</button>`;
+    else btn = '<button class="buy" disabled>🔒 Locked</button>';
+    const tag = ` <span style="color:var(--muted);font-weight:600">· ${w.boost}x carrots</span>`;
+    const desc = !unlocked && !reachable ? `Unlock ${WORLDS[i - 1].name} first` : w.desc;
+    return itemHTML({ i, ico: `<div class="world-ico" style="background:${w.bg}">${w.emoji}</div>`,
+      name: w.name + tag, desc, btn, equipped: current });
+  }).join('');
+  portalKey = state.world + (state.carrots >= 1e6);
+}
+function updatePortal() {
+  if (portalKey !== state.world + (state.carrots >= 1e6)) renderPortal();
+  for (const b of $('worldList').querySelectorAll('.buy[data-cost]')) b.disabled = state.carrots < +b.dataset.cost;
+}
+const openPortal = () => { closeShop(); renderPortal(); updatePortal(); document.body.classList.add('portal-open'); };
+const closePortal = () => document.body.classList.remove('portal-open');
+$('portalBtn').addEventListener('click', openPortal);
+$('closePortal').addEventListener('click', closePortal);
+$('portalScrim').addEventListener('click', closePortal);
+
+$('worldList').addEventListener('click', e => {
+  const btn = e.target.closest('.buy');
+  if (!btn || btn.disabled) return;
+  if ('end' in btn.dataset) { closePortal(); showEnding(); return; }
+  const w = worldOf(btn.dataset.world);
+  if (!state.worldsUnlocked.includes(w.id)) {
+    if (state.carrots < w.cost) return;
+    state.carrots -= w.cost;
+    state.worldsUnlocked.push(w.id);
+  }
+  closePortal();
+  travel(w);
+});
+
+// swirl the screen, switch worlds at the peak, then swirl back out
+function travel(w) {
+  const warp = $('warp');
+  warp.getAnimations().forEach(a => a.cancel());
+  warp.animate([
+    { opacity: 0, transform: 'scale(.2) rotate(0deg)' },
+    { opacity: 1, transform: 'scale(1) rotate(270deg)' },
+  ], { duration: 700, easing: 'ease-in', fill: 'forwards' }).onfinish = () => {
+    state.world = w.id;
+    applyWorld();
+    save();
+    render();
+    warp.animate([
+      { opacity: 1, transform: 'scale(1) rotate(270deg)' },
+      { opacity: 0, transform: 'scale(1.4) rotate(400deg)' },
+    ], { duration: 800, easing: 'ease-out', fill: 'forwards' });
+    toast(`${w.emoji} Welcome to ${w.name}!` + (w.boost > 1 ? ` All carrots ${w.boost}x` : ''));
+  };
+}
+
+// ---------- ending ----------
+function showEndModal(html) {
+  $('endCard').innerHTML = html;
+  $('endModal').classList.add('show');
+}
+const hideEndModal = () => $('endModal').classList.remove('show');
+
+function showEndChoice() {
+  state.endOffered = true;
+  save();
+  showEndModal(`<div class="big">🚀</div>
+    <h2>You made it!</h2>
+    <p>You reached <b>1,000,000 carrots</b> in Space World.<br>Do you want to end the game here, or keep playing?</p>
+    <button class="big-btn primary" data-act="end">🏁 End the game</button>
+    <button class="big-btn light" data-act="keep">Keep playing</button>`);
+}
+
+function showEnding() {
+  state.ended = true;
+  save();
+  showEndModal(`<div class="big">🏆</div>
+    <h2>You beat Carrot Clicker!</h2>
+    <p>From one carrot on a farm all the way to space. Thanks for playing!</p>
+    <div class="end-stats">
+      <div><b>${fmt(state.clicks)}</b>clicks</div>
+      <div><b>${fmt(state.goldenCaught)}</b>golden carrots</div>
+      <div><b>${fmt(state.carrots)}</b>carrots</div>
+    </div>
+    <button class="big-btn dark" data-act="keep">Keep playing anyway</button>
+    <button class="big-btn light" data-act="restart">🔄 Start a new game</button>`);
+  const r = $('endCard').getBoundingClientRect();
+  fling(r.left + r.width / 2, r.top + 60, { n: 14, make: () => emo('⭐', 22), dist: [90, 180], dur: 1200, spin: 360, even: true });
+}
+
+$('endModal').addEventListener('click', e => {
+  const act = e.target.closest('[data-act]')?.dataset.act;
+  if (act === 'end') showEnding();
+  else if (act === 'keep') { hideEndModal(); render(); }
+  else if (act === 'restart') { hideEndModal(); resetGame(); toast('🔄 New game started. Good luck!'); }
+});
+
+function resetGame() {
+  state = fresh();
+  $('goldTint').classList.remove('on');
+  document.querySelectorAll('.golden').forEach(g => g.remove());
+  clearTimeout(goldenTimer);
+  scheduleGolden(true);
+  refreshAll();
+}
+
 function refreshAll() {
   save();
   applyCarrotSkin();
   applyCursorSkin();
   applySoil();
+  applyWorld();
   renderShop();
   render();
 }
@@ -666,6 +949,7 @@ function enterModded() {
   state.carrots = 1e9;
   for (const u of UPGRADES) state[u.key] = u.max || Math.max(state[u.key], 10);
   for (const [kind, list] of Object.values(SKIN_TABS)) state[kind + 'Skins'] = list.map(s => s.id);
+  state.worldsUnlocked = WORLDS.map(w => w.id);
   refreshAll();
   toast('🔓 Modded mode: everything unlocked!');
 }
@@ -693,12 +977,7 @@ $('list').addEventListener('click', e => {
       return;
     }
     clearTimeout(r.timer);
-    state = fresh();
-    $('goldTint').classList.remove('on');
-    document.querySelectorAll('.golden').forEach(g => g.remove());
-    clearTimeout(goldenTimer);
-    scheduleGolden(true);
-    refreshAll();
+    resetGame();
     toast('🗑️ Progress reset');
     return;
   }
@@ -750,7 +1029,7 @@ const closeShop = () => document.body.classList.remove('shop-open');
 $('shopBtn').addEventListener('click', openShop);
 $('closeShop').addEventListener('click', closeShop);
 $('scrim').addEventListener('click', closeShop);
-addEventListener('keydown', e => { if (e.key === 'Escape') closeShop(); });
+addEventListener('keydown', e => { if (e.key === 'Escape') { closeShop(); closePortal(); } });
 
 // ---------- loop ----------
 function render() {
@@ -761,6 +1040,10 @@ function render() {
   $('perSec').textContent = fmt(perSec());
   $('multi').textContent = clickValue() + 'x';
   $('modChip').hidden = !state.modded;
+  $('beatChip').hidden = !state.ended;
+  if (document.body.classList.contains('portal-open')) updatePortal();
+  // reaching 1M in Space World: offer to end the game (once)
+  if (state.world === 'space' && state.carrots >= 1e6 && !state.endOffered) showEndChoice();
   $('goldCount').textContent = fmt(state.goldenCaught);
   $('shopBal').textContent = fmt(state.carrots);
   document.title = `${fmt(state.carrots)} ${$('carrots').lastChild.textContent} · Carrot Clicker`;
@@ -872,6 +1155,7 @@ if (state.cellar && state.lastSeen) {
 
 scheduleGolden(true);
 applySoil();
+applyWorld();
 applyCarrotSkin();
 applyCursorSkin();
 addEventListener('resize', moveTabPill);
