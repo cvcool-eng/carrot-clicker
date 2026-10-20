@@ -1,0 +1,762 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Carrot Clicker</title>
+<meta name="description" content="Click the carrot, buy upgrades and skins, and grow your carrot empire.">
+<meta name="theme-color" content="#ffffff">
+<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🥕</text></svg>">
+<style>
+  :root {
+    --bg: #ffffff; --bg-soft: #f6f7f9; --line: #e8eaee; --text: #1d1f24; --muted: #8a8f99;
+    --accent: #ff7a1a; --accent-soft: #fff1e6; --green: #2fb36b;
+    --shadow: 0 10px 30px rgba(20, 24, 32, .08);
+    --ease: cubic-bezier(.2, .9, .3, 1.2);
+    /* carrot skin colors (changed by JS) */
+    --b1: #ff9a3c; --b2: #f26200; --ridge: #cc4f00; --l1: #5fd36a; --l2: #3aa84a;
+  }
+  * { box-sizing: border-box; }
+  html, body { height: 100%; }
+  body {
+    margin: 0; font-family: "Inter", "Segoe UI", system-ui, sans-serif; color: var(--text);
+    background: radial-gradient(circle at 50% 45%, #fff 0%, var(--bg-soft) 75%); overflow: hidden;
+    user-select: none; -webkit-user-select: none; -webkit-touch-callout: none; touch-action: manipulation;
+  }
+  button { -webkit-tap-highlight-color: transparent; }
+  html.custom-cursor, html.custom-cursor * { cursor: var(--cursor) !important; }
+
+  /* ---------- stats ---------- */
+  header { position: fixed; top: 32px; left: 0; right: 0; text-align: center; pointer-events: none; }
+  #carrots { font-size: clamp(40px, 7vw, 64px); font-weight: 800; letter-spacing: -.02em; display: inline-block; }
+  #carrots small { font-size: .45em; color: var(--muted); font-weight: 600; margin-left: 6px; }
+  .stats { margin-top: 10px; display: flex; gap: 10px; justify-content: center; flex-wrap: wrap; padding: 0 16px; }
+  .chip { background: #fff; border: 1px solid var(--line); border-radius: 999px; padding: 6px 14px; font-size: 14px; color: var(--muted); box-shadow: 0 2px 8px rgba(0,0,0,.03); }
+  .chip b { color: var(--text); }
+
+  /* ---------- carrot ---------- */
+  main { height: 100%; display: grid; place-items: center; }
+  .carrot-wrap { position: relative; width: 340px; height: 340px; display: grid; place-items: center; margin-top: 90px; }
+  #carrotBtn {
+    width: 210px; height: 270px; border: none; background: none; padding: 0; cursor: pointer;
+    animation: bob 3s ease-in-out infinite; -webkit-tap-highlight-color: transparent;
+  }
+  #carrotBtn svg { width: 100%; height: 100%; overflow: visible; filter: drop-shadow(0 18px 18px rgba(255, 122, 26, .22)); transition: transform .25s var(--ease); }
+  #carrotBtn:hover svg { transform: scale(1.05) rotate(-3deg); }
+  @keyframes bob { 50% { transform: translateY(-10px); } }
+  .shadow { position: absolute; bottom: 10px; width: 120px; height: 16px; border-radius: 50%; background: rgba(0,0,0,.07); animation: shadow 3s ease-in-out infinite; }
+  @keyframes shadow { 50% { transform: scaleX(.85); opacity: .7; } }
+
+  @keyframes spin { to { transform: rotate(360deg); } }
+
+  .float { position: fixed; pointer-events: none; font-weight: 800; font-size: 22px; color: var(--accent); z-index: 25; }
+  .particle { position: fixed; width: 8px; height: 8px; border-radius: 50%; pointer-events: none; z-index: 25; }
+  .float.crit { font-size: 30px; color: #ff3d6e; white-space: nowrap; }
+  .float.gold { font-size: 28px; color: #e0a800; white-space: nowrap; }
+  #golden {
+    position: fixed; left: 0; z-index: 15; font-size: 46px; border: none; background: none; padding: 0; cursor: pointer; display: none;
+    filter: sepia(1) saturate(5) hue-rotate(-8deg) brightness(1.2) drop-shadow(0 0 14px #ffd23f);
+  }
+  .fx { position: fixed; pointer-events: none; z-index: 25; line-height: 1; }
+  .trail { position: fixed; pointer-events: none; z-index: 40; line-height: 1; }
+
+  /* ---------- shop ---------- */
+  #shopBtn {
+    position: fixed; right: 24px; top: 50%; transform: translateY(-50%); z-index: 10;
+    border: none; background: var(--text); color: #fff; font: inherit; font-weight: 700; font-size: 16px;
+    padding: 16px 22px; border-radius: 18px; cursor: pointer; box-shadow: var(--shadow);
+    display: flex; flex-direction: column; align-items: center; gap: 4px;
+    transition: transform .3s var(--ease), opacity .25s, background .2s;
+  }
+  #shopBtn .icon { font-size: 26px; }
+  #shopBtn:hover { transform: translateY(-50%) scale(1.06); background: #000; }
+  #shopBtn .dot { position: absolute; top: 8px; right: 8px; width: 10px; height: 10px; border-radius: 50%; background: var(--accent); transform: scale(0); transition: transform .3s var(--ease); }
+  #shopBtn.can-buy .dot { transform: scale(1); }
+  body.shop-open #shopBtn { opacity: 0; transform: translateY(-50%) translateX(40px); pointer-events: none; }
+
+  #scrim { position: fixed; inset: 0; background: rgba(20,24,32,.12); opacity: 0; pointer-events: none; transition: opacity .3s; z-index: 19; }
+  body.shop-open #scrim { opacity: 1; pointer-events: auto; }
+
+  #shop {
+    position: fixed; top: 12px; right: 12px; bottom: 12px; width: min(400px, calc(100vw - 24px)); z-index: 20;
+    background: #fff; border-radius: 24px; box-shadow: 0 20px 60px rgba(20,24,32,.18);
+    display: flex; flex-direction: column; transform: translateX(calc(100% + 24px));
+    transition: transform .45s cubic-bezier(.2, .9, .25, 1);
+  }
+  body.shop-open #shop { transform: none; }
+  .shop-head { display: flex; align-items: center; justify-content: space-between; padding: 20px 20px 8px; }
+  .shop-head h2 { margin: 0; font-size: 22px; }
+  .shop-head .bal { color: var(--muted); font-size: 14px; margin-top: 2px; }
+  #closeShop { border: none; background: var(--bg-soft); width: 36px; height: 36px; border-radius: 50%; font-size: 18px; cursor: pointer; transition: transform .2s var(--ease), background .2s; }
+  #closeShop:hover { transform: rotate(90deg); background: var(--line); }
+
+  .tabs { display: flex; gap: 6px; margin: 8px 20px 4px; padding: 4px; background: var(--bg-soft); border-radius: 14px; position: relative; }
+  .tab { flex: 1; border: none; background: none; font: inherit; font-weight: 600; font-size: 13px; color: var(--muted); padding: 9px 4px; border-radius: 10px; cursor: pointer; position: relative; z-index: 1; transition: color .2s; }
+  .tab.active { color: var(--text); }
+  .tab-pill { position: absolute; top: 4px; bottom: 4px; left: 4px; border-radius: 10px; background: #fff; box-shadow: 0 2px 6px rgba(0,0,0,.08); transition: transform .35s var(--ease), width .35s; }
+
+  .list { flex: 1; overflow-y: auto; padding: 12px 20px 20px; }
+  .item {
+    display: flex; align-items: center; gap: 14px; padding: 14px; border: 1px solid var(--line); border-radius: 18px; margin-bottom: 10px;
+    background: #fff; transition: transform .2s var(--ease), box-shadow .2s, border-color .2s;
+    animation: in .4s var(--ease) both;
+  }
+  .item:hover { transform: translateY(-2px); box-shadow: var(--shadow); }
+  .item.equipped { border-color: var(--accent); background: var(--accent-soft); }
+  @keyframes in { from { opacity: 0; transform: translateY(12px); } }
+  .item .ico { width: 52px; height: 52px; border-radius: 14px; background: var(--bg-soft); display: grid; place-items: center; font-size: 28px; flex-shrink: 0; }
+  .item .info { flex: 1; min-width: 0; }
+  .item .name { font-weight: 700; }
+  .item .desc { font-size: 13px; color: var(--muted); margin-top: 2px; }
+  .buy {
+    border: none; font: inherit; font-weight: 700; font-size: 14px; padding: 10px 14px; border-radius: 12px; cursor: pointer; white-space: nowrap;
+    background: var(--accent); color: #fff; transition: transform .2s var(--ease), background .2s, opacity .2s;
+  }
+  .buy:hover:not(:disabled) { transform: scale(1.06); }
+  .buy:active:not(:disabled) { transform: scale(.95); }
+  .buy:disabled { background: var(--line); color: var(--muted); cursor: not-allowed; }
+  .buy.ghost { background: var(--text); }
+  .buy.done, .buy.done:disabled { background: var(--green); color: #fff; cursor: default; }
+
+  .swatch { width: 26px; height: 34px; position: relative; }
+  .swatch .leaf { position: absolute; left: 8px; top: 0; width: 10px; height: 10px; border-radius: 50% 50% 0 0; background: var(--sl); }
+  .swatch .body { position: absolute; top: 8px; left: 0; right: 0; bottom: 0; clip-path: polygon(0 0, 100% 0, 52% 100%, 48% 100%); border-radius: 6px; background: linear-gradient(135deg, var(--sb1), var(--sb2)); }
+
+  .reset { display: block; margin: 8px auto 0; border: none; background: none; color: var(--muted); font: inherit; font-size: 13px; text-decoration: underline; cursor: pointer; }
+
+  #toast {
+    position: fixed; left: 50%; bottom: 28px; transform: translate(-50%, 120px); background: var(--text); color: #fff;
+    padding: 12px 20px; border-radius: 14px; font-weight: 600; box-shadow: var(--shadow); transition: transform .4s var(--ease); z-index: 30;
+  }
+  #toast.show { transform: translate(-50%, 0); }
+
+  @media (max-width: 600px) {
+    #shopBtn { top: auto; bottom: 20px; transform: none; flex-direction: row; padding: 14px 20px; }
+    #shopBtn:hover { transform: scale(1.04); }
+    body.shop-open #shopBtn { transform: translateX(40px); }
+    .carrot-wrap { width: 280px; height: 280px; }
+    #carrotBtn { width: 170px; height: 220px; }
+  }
+</style>
+</head>
+<body>
+<header>
+  <div id="carrots">0<small>carrots</small></div>
+  <div class="stats">
+    <span class="chip">👆 <b id="clicks">0</b> <span id="clicksLabel">clicks</span></span>
+    <span class="chip">⏱️ <b id="perSec">0</b> / sec</span>
+    <span class="chip">✖️ <b id="multi">1x</b> multiplier</span>
+  </div>
+</header>
+
+<main>
+  <div class="carrot-wrap" id="wrap">
+    <div class="shadow"></div>
+    <button id="carrotBtn" aria-label="Click the carrot">
+      <svg viewBox="0 0 200 260" aria-hidden="true">
+        <defs>
+          <linearGradient id="bodyGrad" x1="0" y1="0" x2="1" y2="1">
+            <stop offset="0" style="stop-color: var(--b1)"/>
+            <stop offset="1" style="stop-color: var(--b2)"/>
+          </linearGradient>
+          <linearGradient id="leafGrad" x1="0" y1="0" x2="0" y2="1">
+            <stop offset="0" style="stop-color: var(--l1)"/>
+            <stop offset="1" style="stop-color: var(--l2)"/>
+          </linearGradient>
+        </defs>
+        <g transform="rotate(-20 100 130)">
+        <!-- leaves -->
+        <g fill="url(#leafGrad)">
+          <path d="M100 62 C 70 50, 52 20, 62 6 C 82 12, 98 36, 100 62 Z"/>
+          <path d="M100 62 C 130 50, 148 20, 138 6 C 118 12, 102 36, 100 62 Z"/>
+          <path d="M100 64 C 88 40, 90 12, 100 0 C 110 12, 112 40, 100 64 Z"/>
+        </g>
+        <!-- body -->
+        <g id="carrotBody">
+          <path d="M52 78 C 60 58, 140 58, 148 78 C 156 98, 130 170, 108 238 C 104 250, 96 250, 92 238 C 70 170, 44 98, 52 78 Z" fill="url(#bodyGrad)"/>
+          <g stroke="var(--ridge)" stroke-width="5" stroke-linecap="round" fill="none" opacity=".55">
+            <path d="M64 140 q 12 4 22 0"/>
+            <path d="M120 162 q 10 3 18 -2"/>
+            <path d="M84 196 q 9 3 16 0"/>
+            <path d="M126 104 q 8 3 14 -1"/>
+          </g>
+          <!-- shine -->
+          <path d="M66 84 C 70 74, 84 70, 92 72" stroke="#fff" stroke-width="7" stroke-linecap="round" fill="none" opacity=".5"/>
+        </g>
+        </g>
+      </svg>
+    </button>
+  </div>
+</main>
+
+<button id="shopBtn"><span class="dot"></span><span class="icon">🛒</span>Shop</button>
+<div id="scrim"></div>
+
+<aside id="shop" aria-label="Shop">
+  <div class="shop-head">
+    <div><h2>Shop</h2><div class="bal">🥕 <span id="shopBal">0</span> carrots</div></div>
+    <button id="closeShop" aria-label="Close shop">✕</button>
+  </div>
+  <div class="tabs" id="tabs">
+    <div class="tab-pill" id="pill"></div>
+    <button class="tab active" data-tab="upgrades">Upgrades</button>
+    <button class="tab" data-tab="carrots">Carrots</button>
+    <button class="tab" data-tab="cursors">Mice</button>
+    <button class="tab" data-tab="trails">Trails</button>
+    <button class="tab" data-tab="taps">Taps</button>
+  </div>
+  <div class="list" id="list"></div>
+</aside>
+
+<div id="toast"></div>
+<button id="golden" aria-label="Golden carrot">🥕</button>
+
+<script>
+const CARROT_SKINS = [
+  { id: 'classic', name: 'Classic',  cost: 0,      b1: '#ff9a3c', b2: '#f26200', ridge: '#cc4f00', l1: '#5fd36a', l2: '#3aa84a' },
+  { id: 'golden',  name: 'Golden',   cost: 5000,   b1: '#ffe27a', b2: '#f2b600', ridge: '#c99500', l1: '#8fdc78', l2: '#4fae4a' },
+  { id: 'purple',  name: 'Purple',   cost: 15000,  b1: '#c890ff', b2: '#8040e0', ridge: '#6a2fc0', l1: '#5fd36a', l2: '#3aa84a' },
+  { id: 'frozen',  name: 'Frozen',   cost: 40000,  b1: '#e3f6ff', b2: '#7cc8f2', ridge: '#4ea6d6', l1: '#b4f0e8', l2: '#6bcfc0' },
+  { id: 'midnight',name: 'Midnight', cost: 100000, b1: '#5a5f8a', b2: '#23263f', ridge: '#11131f', l1: '#7a86ff', l2: '#4450d8' },
+];
+
+// a bunny wearing a little crown, for the shop icon
+const CROWNED_BUNNY = '<span style="position:relative;display:inline-block;line-height:1">🐰' +
+  '<span style="position:absolute;left:50%;top:-.42em;transform:translateX(-50%) rotate(-12deg);font-size:.55em">👑</span></span>';
+
+// an old-school pixel-art arrow pointer (B = black outline, W = white fill)
+function pixelArrowSvg(scale = 2) {
+  const rows = ['B', 'BB', 'BWB', 'BWWB', 'BWWWB', 'BWWWWB', 'BWWWWWB', 'BWWWWWWB', 'BWWWWWWWB', 'BWWWWWWWWB',
+    'BWWWWWBBBBB', 'BWWBWWB', 'BWB.BWWB', 'BB..BWWB', 'B....BWWB', '.....BWWB', '......BB'];
+  let rects = '';
+  rows.forEach((row, y) => [...row].forEach((c, x) => {
+    if (c !== '.') rects += `<rect x="${x}" y="${y}" width="1" height="1" fill="${c === 'B' ? '#1d1f24' : '#fff'}"/>`;
+  }));
+  return `<svg xmlns="http://www.w3.org/2000/svg" width="${11 * scale}" height="${17 * scale}" viewBox="0 0 11 17" shape-rendering="crispEdges">${rects}</svg>`;
+}
+
+// a chunky, cartoony arrow mouse pointer in any color, as an SVG string
+function arrowSvg(color, size = 32) {
+  const arrow = 'M5 3 L5 24 L10.5 19 L14.5 27.5 L19 25.5 L15 17.5 L22.5 17.5 Z';
+  return `<svg xmlns="http://www.w3.org/2000/svg" width="${size}" height="${size}" viewBox="0 0 32 32">` +
+    `<path d="${arrow}" transform="translate(1.5 1.5)" fill="rgba(0,0,0,.18)" stroke="rgba(0,0,0,.18)" stroke-width="2.6" stroke-linejoin="round"/>` +
+    `<path d="${arrow}" fill="${color}" stroke="#1d1f24" stroke-width="2.6" stroke-linejoin="round"/>` +
+    `<path d="M7.6 8 L7.6 15" stroke="#fff" stroke-width="1.8" stroke-linecap="round" opacity=".7"/></svg>`;
+}
+
+const CURSOR_SKINS = [
+  { id: 'default', name: 'Default',  cost: 0,      arrow: '#ffffff', icon: arrowSvg('#ffffff') },
+  { id: 'orange',  name: 'Orange Pointer', cost: 500,   arrow: '#ff7a1a', icon: arrowSvg('#ff7a1a') },
+  { id: 'purple',  name: 'Purple Pointer', cost: 2500,  arrow: '#8a4dff', icon: arrowSvg('#8a4dff') },
+  { id: 'pixel',   name: 'Pixel Mouse',    cost: 5000,  pixel: true, icon: pixelArrowSvg() },
+  { id: 'carrot',  name: 'Carrot',   cost: 10000,  emoji: '🥕' },
+  { id: 'bunny',   name: 'Bunny',    cost: 30000,  emoji: '🐰' },
+  { id: 'crown',   name: 'Crown',    cost: 120000, emoji: '👑' },
+  { id: 'king',    name: 'King Bunny', cost: 1000000, crowned: true, icon: CROWNED_BUNNY },
+];
+
+const TRAILS = [
+  { id: 'none',    name: 'No Trail',     cost: 0,      icon: '🚫' },
+  { id: 'glow',    name: 'Orange Glow',  cost: 1500,   icon: '🟠', color: '#ff8a2b' },
+  { id: 'pixel',   name: 'Pixel',        cost: 3000,   icon: '👾', style: 'pixel' },
+  { id: 'comet',   name: 'Comet',        cost: 6000,   icon: '☄️', style: 'comet' },
+  { id: 'smoke',   name: 'Smoke',        cost: 12000,  icon: '💨', style: 'smoke' },
+  { id: 'stars',   name: 'Stardust',     cost: 20000,  icon: '⭐', emoji: '⭐' },
+  { id: 'carrots', name: 'Carrot Trail', cost: 150000, icon: '🥕', emoji: '🥕' },
+];
+
+const TAPS = [
+  { id: 'ripple',   name: 'Ripple',           cost: 0,      icon: '⭕' },
+  { id: 'stars',    name: 'Star Pop',         cost: 30000,  icon: '🌟' },
+  { id: 'carrots',  name: 'Carrot Explosion', cost: 75000,  icon: '🥕' },
+  { id: 'firework', name: 'Firework',         cost: 200000, icon: '🎆' },
+];
+
+const autoCost = n => Math.round(1000 * 1.3 ** n);       // 1000, 1300, 1690, ...
+const multCost = m => Math.round(250 * 4 ** (m - 1));     // 2x: 250, 3x: 1000, 4x: 4000, ...
+
+const SAVE_KEY = 'carrotClickerSave';
+const fresh = () => ({ carrots: 0, clicks: 0, autos: 0, mult: 1,
+  carrotSkins: ['classic'], carrotSkin: 'classic', cursorSkins: ['default'], cursorSkin: 'default',
+  trailSkins: ['none'], trailSkin: 'none', tapSkins: ['ripple'], tapSkin: 'ripple',
+  crit: 0, turbo: 0, farms: 0, tractors: 0, golden: 0, cellar: 0, lastSeen: Date.now() });
+let state = fresh();
+try { Object.assign(state, JSON.parse(localStorage.getItem(SAVE_KEY)) || {}); } catch {}
+// fall back to the default if an equipped item was removed from the game
+if (!CARROT_SKINS.some(t => t.id === state.carrotSkin)) state.carrotSkin = 'classic';
+if (!CURSOR_SKINS.some(t => t.id === state.cursorSkin)) state.cursorSkin = 'default';
+if (!TRAILS.some(t => t.id === state.trailSkin)) state.trailSkin = 'none';
+if (!TAPS.some(t => t.id === state.tapSkin)) state.tapSkin = 'ripple';
+if (!state.tapSkins.includes('ripple')) state.tapSkins.push('ripple');
+const save = () => { state.lastSeen = Date.now(); try { localStorage.setItem(SAVE_KEY, JSON.stringify(state)); } catch {} };
+
+const $ = id => document.getElementById(id);
+const autoValue = () => state.mult * 2 ** state.turbo;   // carrots per auto clicker per second
+const perSec = () => state.autos * autoValue() + state.farms * 10 + state.tractors * 80;
+const critChance = () => state.crit * .05;
+
+// every upgrade levels up state[key] by 1 when bought
+const UPGRADES = [
+  { key: 'autos', ico: '🖱️', name: 'Auto Clicker', tag: n => `${n} owned`,
+    desc: () => `Clicks the carrot once every second (+${fmt(autoValue())}/sec)`,
+    cost: autoCost, toast: '🖱️ Auto Clicker bought!' },
+  { key: 'mult', ico: '✖️', name: 'Carrot Multiplier', tag: n => `${n}x`,
+    desc: n => `Upgrade to ${n + 1}x carrots per click`,
+    cost: multCost, toast: () => `✖️ Multiplier is now ${state.mult}x!` },
+  { key: 'crit', ico: '🍀', name: 'Lucky Clicks', tag: n => `${n * 5}%`, max: 10,
+    desc: n => n < 10 ? `${(n + 1) * 5}% chance for a 10x CRIT click` : '50% chance for a 10x CRIT click',
+    cost: n => Math.round(2000 * 2.2 ** n), toast: '🍀 Your clicks feel luckier!' },
+  { key: 'turbo', ico: '⚙️', name: 'Turbo Gears', tag: n => `Lv ${n}`, max: 5,
+    desc: () => 'Auto clickers make 2x carrots',
+    cost: n => Math.round(5000 * 5 ** n), toast: '⚙️ Auto clickers sped up!' },
+  { key: 'farms', ico: '🌱', name: 'Carrot Farm', tag: n => `${n} owned`,
+    desc: () => 'Grows 10 carrots every second',
+    cost: n => Math.round(12000 * 1.3 ** n), toast: '🌱 New carrot farm!' },
+  { key: 'tractors', ico: '🚜', name: 'Tractor', tag: n => `${n} owned`,
+    desc: () => 'Harvests 80 carrots every second',
+    cost: n => Math.round(100000 * 1.3 ** n), toast: '🚜 Tractor bought!' },
+  { key: 'golden', ico: '✨', name: 'Golden Soil', tag: n => `Lv ${n}`, max: 3,
+    desc: () => 'Golden carrots show up more often and give more',
+    cost: n => Math.round(3000 * 4 ** n), toast: '✨ Golden carrots incoming!' },
+  { key: 'cellar', ico: '🏚️', name: 'Carrot Cellar', max: 1,
+    desc: () => 'Keep earning 50% of your carrots/sec while the game is closed (up to 8 hours)',
+    cost: () => 25000, toast: '🏚️ Your cellar will collect carrots while you\'re away!' },
+];
+const fmt = n => {
+  n = Math.floor(n);
+  if (n < 1e6) return n.toLocaleString();
+  const u = ['K', 'M', 'B', 'T', 'Qa', 'Qi'];
+  let i = -1;
+  while (n >= 1000 && i < u.length - 1) { n /= 1000; i++; }
+  return n.toFixed(2) + u[i];
+};
+
+// ---------- clicking ----------
+function spawnFloat(text, x, y, cls = '') {
+  const el = document.createElement('div');
+  el.className = 'float ' + cls;
+  el.textContent = text;
+  el.style.left = x + 'px';
+  el.style.top = y + 'px';
+  document.body.appendChild(el);
+  const dx = (Math.random() - .5) * 40;
+  el.animate([
+    { transform: 'translate(-50%, -50%) scale(.6)', opacity: 0 },
+    { transform: 'translate(-50%, -90%) scale(1.15)', opacity: 1, offset: .15 },
+    { transform: `translate(calc(-50% + ${dx * .6}px), -180%) scale(1)`, opacity: 1, offset: .6 },
+    { transform: `translate(calc(-50% + ${dx}px), -260%) scale(1)`, opacity: 0 },
+  ], { duration: 1000, easing: 'ease-out' }).onfinish = () => el.remove();
+}
+
+// "+N" pops up just above the top of the carrot
+function floatAboveCarrot(text, cls) {
+  const r = $('carrotBtn').getBoundingClientRect();
+  spawnFloat(text, r.left + r.width / 2 + (Math.random() - .5) * 50, r.top + 10, cls);
+}
+
+function burst(x, y) {
+  const colors = [getComputedStyle(document.documentElement).getPropertyValue('--b2'), '#5fd36a', '#ffd166'];
+  for (let i = 0; i < 8; i++) {
+    const p = document.createElement('div');
+    p.className = 'particle';
+    p.style.left = x + 'px';
+    p.style.top = y + 'px';
+    p.style.background = colors[i % colors.length];
+    document.body.appendChild(p);
+    const a = Math.random() * Math.PI * 2, d = 40 + Math.random() * 50;
+    p.animate([
+      { transform: 'translate(-50%,-50%) scale(1)', opacity: 1 },
+      { transform: `translate(calc(-50% + ${Math.cos(a) * d}px), calc(-50% + ${Math.sin(a) * d}px)) scale(0)`, opacity: 0 },
+    ], { duration: 600 + Math.random() * 200, easing: 'cubic-bezier(.1,.8,.3,1)' }).onfinish = () => p.remove();
+  }
+}
+
+// ---------- tap effects ----------
+const dot = (color, size = 8) => {
+  const d = document.createElement('div');
+  d.style.cssText = `width:${size}px;height:${size}px;border-radius:50%;background:${color};box-shadow:0 0 8px ${color}`;
+  return d;
+};
+const emo = (text, size = 22) => {
+  const d = document.createElement('div');
+  d.textContent = text;
+  d.style.fontSize = size + 'px';
+  return d;
+};
+
+// throws n elements outward from (x, y), with optional gravity and spin
+function fling(x, y, { n = 8, make, dist = [40, 90], dur = 700, gravity = 0, spin = 0, even = false }) {
+  for (let i = 0; i < n; i++) {
+    const el = make(i);
+    el.classList.add('fx');
+    el.style.left = x + 'px';
+    el.style.top = y + 'px';
+    document.body.appendChild(el);
+    const a = even ? i / n * Math.PI * 2 : Math.random() * Math.PI * 2;
+    const d = dist[0] + Math.random() * (dist[1] - dist[0]);
+    const dx = Math.cos(a) * d, dy = Math.sin(a) * d, r = spin * (Math.random() - .5) * 2;
+    el.animate([
+      { transform: 'translate(-50%,-50%) rotate(0deg) scale(.6)', opacity: 1 },
+      { transform: `translate(calc(-50% + ${dx}px), calc(-50% + ${dy}px)) rotate(${r / 2}deg) scale(1)`, opacity: 1, offset: .55 },
+      { transform: `translate(calc(-50% + ${dx * 1.15}px), calc(-50% + ${dy + gravity}px)) rotate(${r}deg) scale(.4)`, opacity: 0 },
+    ], { duration: dur * (.85 + Math.random() * .3), easing: 'cubic-bezier(.15,.8,.3,1)' }).onfinish = () => el.remove();
+  }
+}
+
+function ripple(x, y, color, delay = 0) {
+  const el = document.createElement('div');
+  el.className = 'fx';
+  el.style.cssText = `left:${x}px;top:${y}px;width:24px;height:24px;border-radius:50%;border:3px solid ${color}`;
+  document.body.appendChild(el);
+  el.animate([
+    { transform: 'translate(-50%,-50%) scale(.5)', opacity: .9 },
+    { transform: 'translate(-50%,-50%) scale(5)', opacity: 0 },
+  ], { duration: 600, delay, easing: 'cubic-bezier(.2,.8,.3,1)', fill: 'backwards' }).onfinish = () => el.remove();
+}
+
+function tapEffect(x, y) {
+  const orange = getComputedStyle(document.documentElement).getPropertyValue('--b2');
+  switch (state.tapSkin) {
+    case 'stars':
+      fling(x, y, { n: 6, make: () => emo('⭐', 20), dist: [50, 90], spin: 360, even: true });
+      break;
+    case 'carrots':
+      fling(x, y, { n: 8, make: () => emo('🥕', 24), dist: [60, 110], dur: 900, gravity: 120, spin: 400 });
+      break;
+    case 'firework': {
+      const hue = Math.random() * 360;
+      fling(x, y, { n: 18, make: i => dot(`hsl(${hue + i * 8} 95% 60%)`, 7), dist: [80, 95], dur: 900, gravity: 30, even: true });
+      ripple(x, y, `hsl(${hue} 95% 60%)`);
+      break;
+    }
+    default:
+      ripple(x, y, orange);
+      ripple(x, y, orange, 120);
+  }
+}
+
+// ---------- mouse trail ----------
+let lastTrail = 0;
+addEventListener('pointermove', e => {
+  const t = TRAILS.find(k => k.id === state.trailSkin);
+  if (!t || t.id === 'none') return;
+  const style = TRAIL_STYLES[t.style] || (t.emoji ? TRAIL_STYLES.emoji : TRAIL_STYLES.dot);
+  const now = performance.now();
+  if (now - lastTrail < style.gap) return;
+  const made = style.make(e.clientX, e.clientY, t);
+  if (!made) return;
+  lastTrail = now;
+  const [el, frames, opts] = made;
+  el.classList.add('trail');
+  document.body.appendChild(el);
+  el.animate(frames, opts).onfinish = () => el.remove();
+});
+
+const place = (el, x, y) => { el.style.left = x + 'px'; el.style.top = y + 'px'; return el; };
+let lastPixel = '';
+// each trail style: minimum ms between pieces, and make() -> [element, keyframes, options]
+const TRAIL_STYLES = {
+  dot: { gap: 16, make: (x, y, t) => [place(dot(t.color, 10), x, y), [
+    { transform: 'translate(-50%,-50%) scale(1)', opacity: .9 },
+    { transform: 'translate(-50%,-50%) scale(.2)', opacity: 0 }], { duration: 500, easing: 'ease-out' }] },
+
+  emoji: { gap: 45, make: (x, y, t) => [place(emo(t.emoji, 18), x, y), [
+    { transform: 'translate(-50%,-50%) scale(1)', opacity: .9 },
+    { transform: 'translate(-50%, calc(-50% + 24px)) scale(.2)', opacity: 0 }], { duration: 700, easing: 'ease-out' }] },
+
+  // chunky squares snapped to an 8px grid, fading out in steps
+  pixel: { gap: 10, make: (x, y) => {
+    const gx = Math.floor(x / 8) * 8, gy = Math.floor(y / 8) * 8;
+    if (gx + ',' + gy === lastPixel) return null;
+    lastPixel = gx + ',' + gy;
+    const el = document.createElement('div');
+    el.style.cssText = `width:8px;height:8px;background:${['#ff7a1a', '#ffa24a', '#f26200'][Math.random() * 3 | 0]}`;
+    return [place(el, gx, gy), [{ opacity: 1 }, { opacity: 0 }], { duration: 600, easing: 'steps(4)' }];
+  } },
+
+  // dense glowing dots that shrink quickly, like a comet tail
+  comet: { gap: 0, make: (x, y) => [place(dot('#ff8a2b', 9), x, y), [
+    { transform: 'translate(-50%,-50%) scale(1)', opacity: 1 },
+    { transform: 'translate(-50%,-50%) scale(0)', opacity: .3 }], { duration: 350, easing: 'linear' }] },
+
+  smoke: { gap: 30, make: (x, y) => {
+    const el = document.createElement('div');
+    el.style.cssText = 'width:18px;height:18px;border-radius:50%;background:rgba(130,136,148,.35);filter:blur(4px)';
+    return [place(el, x, y), [
+      { transform: 'translate(-50%,-50%) scale(1)', opacity: .6 },
+      { transform: `translate(calc(-50% + ${(Math.random() - .5) * 20}px), calc(-50% - 24px)) scale(2.6)`, opacity: 0 }],
+      { duration: 900, easing: 'ease-out' }];
+  } },
+};
+
+function squish() {
+  $('carrotBtn').querySelector('svg').animate([
+    { transform: 'scale(1)' },
+    { transform: 'scale(1.12)', offset: .35 },
+    { transform: 'scale(1)' },
+  ], { duration: 260, easing: 'ease-out' });
+}
+
+function bump(el) {
+  el.animate([{ transform: 'scale(1)' }, { transform: 'scale(1.08)' }, { transform: 'scale(1)' }], { duration: 200, easing: 'ease-out' });
+}
+
+$('carrotBtn').addEventListener('pointerdown', e => {
+  const crit = Math.random() < critChance();
+  const gain = state.mult * (crit ? 10 : 1);
+  state.carrots += gain;
+  state.clicks++;
+  squish();
+  tapEffect(e.clientX, e.clientY);
+  floatAboveCarrot((crit ? 'CRIT! +' : '+') + fmt(gain), crit ? 'crit' : '');
+  bump($('carrots'));
+  render();
+});
+
+// ---------- skins ----------
+function applyCarrotSkin() {
+  const s = CARROT_SKINS.find(k => k.id === state.carrotSkin) || CARROT_SKINS[0];
+  const root = document.documentElement.style;
+  for (const k of ['b1', 'b2', 'ridge', 'l1', 'l2']) root.setProperty('--' + k, s[k]);
+}
+
+const cursorCache = {};
+function emojiCursor(emoji) {
+  if (cursorCache[emoji]) return cursorCache[emoji];
+  const c = document.createElement('canvas');
+  c.width = c.height = 40;
+  const x = c.getContext('2d');
+  x.font = '30px "Segoe UI Emoji", "Apple Color Emoji", "Noto Color Emoji", sans-serif';
+  x.textAlign = 'center';
+  x.textBaseline = 'middle';
+  x.fillText(emoji, 20, 22);
+  return cursorCache[emoji] = `url(${c.toDataURL()}) 10 6, pointer`;
+}
+function crownedBunnyCursor() {
+  const c = document.createElement('canvas');
+  c.width = c.height = 48;
+  const x = c.getContext('2d');
+  x.font = '30px "Segoe UI Emoji", "Apple Color Emoji", "Noto Color Emoji", sans-serif';
+  x.textAlign = 'center';
+  x.textBaseline = 'middle';
+  x.fillText('🐰', 22, 30);
+  x.translate(23, 11);
+  x.rotate(-.2);
+  x.font = '17px "Segoe UI Emoji", "Apple Color Emoji", "Noto Color Emoji", sans-serif';
+  x.fillText('👑', 0, 0);
+  return `url(${c.toDataURL()}) 12 14, pointer`;
+}
+
+function applyCursorSkin() {
+  const s = CURSOR_SKINS.find(k => k.id === state.cursorSkin) || CURSOR_SKINS[0];
+  const html = document.documentElement;
+  const cursor = s.emoji ? emojiCursor(s.emoji)
+    : s.arrow ? `url("data:image/svg+xml,${encodeURIComponent(arrowSvg(s.arrow))}") 5 3, pointer`
+    : s.pixel ? `url("data:image/svg+xml,${encodeURIComponent(pixelArrowSvg())}") 1 1, pointer`
+    : s.crowned ? crownedBunnyCursor() : null;
+  html.classList.toggle('custom-cursor', !!cursor);
+  if (cursor) html.style.setProperty('--cursor', cursor);
+}
+
+// ---------- shop ----------
+let tab = 'upgrades';
+const SKIN_TABS = { carrots: ['carrot', CARROT_SKINS], cursors: ['cursor', CURSOR_SKINS], trails: ['trail', TRAILS], taps: ['tap', TAPS] };
+const SKIN_LABEL = { carrot: 'Carrot skin', cursor: 'Mouse skin', trail: 'Mouse trail', tap: 'Tap effect' };
+const SKIN_TOAST = { carrot: '🥕 New carrot skin!', cursor: '✨ New mouse skin!', trail: '🌈 New mouse trail!', tap: '💥 New tap effect!' };
+
+function itemHTML({ ico, name, desc, btn, equipped, i }) {
+  return `<div class="item${equipped ? ' equipped' : ''}" style="animation-delay:${i * 40}ms">
+    <div class="ico">${ico}</div>
+    <div class="info"><div class="name">${name}</div><div class="desc">${desc}</div></div>
+    ${btn}</div>`;
+}
+const buyBtn = (action, cost) =>
+  `<button class="buy" data-action="${action}" data-cost="${cost}">🥕 ${fmt(cost)}</button>`;
+
+function skinRow(s, i, kind) {
+  const owned = state[kind + 'Skins'].includes(s.id);
+  const equipped = state[kind + 'Skin'] === s.id;
+  const ico = kind === 'carrot'
+    ? `<div class="swatch" style="--sb1:${s.b1};--sb2:${s.b2};--sl:${s.l1}">
+         <div class="leaf"></div><div class="body"></div></div>`
+    : s.icon || s.emoji;
+  const btn = equipped ? '<button class="buy done" disabled>Equipped</button>'
+    : owned ? `<button class="buy ghost" data-action="equip-${kind}:${s.id}">Equip</button>`
+    : buyBtn(`skin-${kind}:${s.id}`, s.cost);
+  return itemHTML({ ico, name: s.name, desc: s.cost ? (owned ? 'Owned' : SKIN_LABEL[kind]) : 'Free', btn, equipped, i });
+}
+
+function renderShop() {
+  let html = '';
+  if (tab === 'upgrades') {
+    html = UPGRADES.map((u, i) => {
+      const n = state[u.key];
+      const maxed = u.max && n >= u.max;
+      const tag = u.tag ? ` <span style="color:var(--muted);font-weight:600">· ${u.tag(n)}</span>` : '';
+      return itemHTML({ i, ico: u.ico, name: u.name + tag, desc: u.desc(n),
+        btn: maxed ? '<button class="buy done" disabled>Maxed</button>' : buyBtn('up:' + u.key, u.cost(n)) });
+    }).join('');
+  } else {
+    const [kind, list] = SKIN_TABS[tab];
+    html = list.map((s, i) => skinRow(s, i, kind)).join('');
+  }
+  $('list').innerHTML = html + '<button class="reset" id="reset">Reset progress</button>';
+  updateButtons();
+}
+
+function updateButtons() {
+  for (const b of $('list').querySelectorAll('.buy[data-cost]')) b.disabled = state.carrots < +b.dataset.cost;
+  const anyAffordable = UPGRADES.some(u => !(u.max && state[u.key] >= u.max) && state.carrots >= u.cost(state[u.key]));
+  $('shopBtn').classList.toggle('can-buy', anyAffordable);
+}
+
+function toast(msg) {
+  const t = $('toast');
+  t.textContent = msg;
+  t.classList.add('show');
+  clearTimeout(toast.timer);
+  toast.timer = setTimeout(() => t.classList.remove('show'), 1800);
+}
+
+$('list').addEventListener('click', e => {
+  if (e.target.id === 'reset') {
+    if (confirm('Reset all progress?')) { state = fresh(); save(); applyCarrotSkin(); applyCursorSkin(); renderShop(); render(); }
+    return;
+  }
+  const btn = e.target.closest('.buy');
+  if (!btn || btn.disabled || !btn.dataset.action) return;
+  const [action, id] = btn.dataset.action.split(':');
+  const cost = +btn.dataset.cost || 0;
+  if (state.carrots < cost) return;
+  state.carrots -= cost;
+
+  const [verb, kind] = action.split('-');
+  if (action === 'up') {
+    const u = UPGRADES.find(x => x.key === id);
+    state[id]++;
+    if (u.after) u.after();
+    toast(typeof u.toast === 'function' ? u.toast() : u.toast);
+  } else {
+    if (verb === 'skin') { state[kind + 'Skins'].push(id); toast(SKIN_TOAST[kind]); }
+    state[kind + 'Skin'] = id;
+    if (kind === 'carrot') applyCarrotSkin();
+    if (kind === 'cursor') applyCursorSkin();
+  }
+
+  // tap effects show off a preview right on the button
+  const r = btn.getBoundingClientRect();
+  if (kind === 'tap') tapEffect(r.left + r.width / 2, r.top + r.height / 2);
+  else if (cost) burst(r.left + r.width / 2, r.top + r.height / 2);
+  save();
+  renderShop();
+  render();
+});
+
+function moveTabPill() {
+  const active = document.querySelector('.tab.active');
+  $('pill').style.width = active.offsetWidth + 'px';
+  $('pill').style.transform = `translateX(${active.offsetLeft - 4}px)`;
+}
+$('tabs').addEventListener('click', e => {
+  const t = e.target.closest('.tab');
+  if (!t) return;
+  document.querySelectorAll('.tab').forEach(x => x.classList.toggle('active', x === t));
+  tab = t.dataset.tab;
+  moveTabPill();
+  renderShop();
+});
+
+const openShop = () => { document.body.classList.add('shop-open'); renderShop(); requestAnimationFrame(moveTabPill); };
+const closeShop = () => document.body.classList.remove('shop-open');
+$('shopBtn').addEventListener('click', openShop);
+$('closeShop').addEventListener('click', closeShop);
+$('scrim').addEventListener('click', closeShop);
+addEventListener('keydown', e => { if (e.key === 'Escape') closeShop(); });
+
+// ---------- loop ----------
+function render() {
+  $('carrots').firstChild.textContent = fmt(state.carrots);
+  $('carrots').lastChild.textContent = Math.floor(state.carrots) === 1 ? 'carrot' : 'carrots';
+  $('clicksLabel').textContent = state.clicks === 1 ? 'click' : 'clicks';
+  $('clicks').textContent = fmt(state.clicks);
+  $('perSec').textContent = fmt(perSec());
+  $('multi').textContent = state.mult + 'x';
+  $('shopBal').textContent = fmt(state.carrots);
+  document.title = `${fmt(state.carrots)} carrots · Carrot Clicker`;
+  updateButtons();
+}
+
+let last = performance.now();
+function tick(now) {
+  state.carrots += perSec() * (now - last) / 1000;
+  last = now;
+  render();
+  requestAnimationFrame(tick);
+}
+
+// auto clickers visibly "tap" the carrot once a second
+setInterval(() => {
+  if (!state.autos) return;
+  floatAboveCarrot('+' + fmt(perSec()));
+}, 1000);
+
+// ---------- golden carrots: random bonus that pops up somewhere on screen ----------
+let goldenTimer;
+function scheduleGolden(first) {
+  const secs = (first ? 30 : 60) + Math.random() * 60;
+  goldenTimer = setTimeout(spawnGolden, secs / (1 + state.golden * .5) * 1000);
+}
+// flies across the screen (left→right or right→left) in a wavy line
+function spawnGolden() {
+  const g = $('golden');
+  const w = innerWidth, dir = Math.random() < .5 ? 1 : -1;
+  g.style.top = (18 + Math.random() * 60) + 'vh';
+  g.style.display = 'block';
+  const frames = [];
+  for (let i = 0; i <= 12; i++) {
+    const t = i / 12;
+    const x = dir > 0 ? -60 + t * (w + 120) : w + 60 - t * (w + 120);
+    const y = Math.sin(t * Math.PI * 3) * 40;
+    const tilt = Math.sin(t * Math.PI * 6) * 15 + dir * 20;
+    frames.push({ transform: `translate(${x}px, ${y}px) rotate(${tilt}deg)` });
+  }
+  if (g.flight) g.flight.cancel();
+  g.flight = g.animate(frames, { duration: 9000, easing: 'linear' });
+  g.flight.onfinish = () => { g.style.display = 'none'; };
+  scheduleGolden();
+}
+$('golden').addEventListener('pointerdown', e => {
+  const g = $('golden');
+  if (g.flight) g.flight.cancel();
+  g.style.display = 'none';
+  const reward = Math.max(100, perSec() * 60, state.mult * 50) * (1 + state.golden * .5);
+  state.carrots += reward;
+  burst(e.clientX, e.clientY);
+  spawnFloat('+' + fmt(reward), e.clientX, e.clientY, 'gold');
+  toast(`✨ Golden carrot! +${fmt(reward)} carrots`);
+  render();
+});
+
+// ---------- carrot cellar: offline earnings ----------
+if (state.cellar && state.lastSeen) {
+  const away = Math.min((Date.now() - state.lastSeen) / 1000, 8 * 3600);
+  const earned = perSec() * away * .5;
+  if (earned >= 1) {
+    state.carrots += earned;
+    setTimeout(() => toast(`🏚️ While you were away: +${fmt(earned)} carrots`), 600);
+  }
+}
+
+scheduleGolden(true);
+applyCarrotSkin();
+applyCursorSkin();
+addEventListener('resize', moveTabPill);
+setInterval(save, 3000);
+addEventListener('beforeunload', save);
+// phones often close tabs without beforeunload, so also save whenever the page is hidden
+document.addEventListener('visibilitychange', () => { if (document.hidden) save(); });
+$('carrotBtn').addEventListener('contextmenu', e => e.preventDefault());
+requestAnimationFrame(tick);
+</script>
+</body>
+</html>
