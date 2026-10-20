@@ -53,8 +53,13 @@
   .particle { position: fixed; width: 8px; height: 8px; border-radius: 50%; pointer-events: none; z-index: 25; }
   .float.crit { font-size: 30px; color: #ff3d6e; white-space: nowrap; }
   .float.gold { font-size: 28px; color: #e0a800; white-space: nowrap; }
-  #golden {
-    position: fixed; left: 0; z-index: 15; font-size: 46px; border: none; background: none; padding: 0; cursor: pointer; display: none;
+  #goldTint {
+    position: fixed; inset: 0; z-index: 14; pointer-events: none; opacity: 0; transition: opacity .8s;
+    background: radial-gradient(circle at 50% 45%, rgba(255, 220, 80, .12), rgba(255, 190, 30, .3));
+  }
+  #goldTint.on { opacity: 1; }
+  .golden {
+    position: fixed; left: 0; z-index: 15; font-size: 46px; border: none; background: none; padding: 0; cursor: pointer;
     filter: sepia(1) saturate(5) hue-rotate(-8deg) brightness(1.2) drop-shadow(0 0 14px #ffd23f);
   }
   .fx { position: fixed; pointer-events: none; z-index: 25; line-height: 1; }
@@ -152,6 +157,7 @@
   <div id="carrots">0<small>carrots</small></div>
   <div class="stats">
     <span class="chip">👆 <b id="clicks">0</b> <span id="clicksLabel">clicks</span></span>
+    <span class="chip" id="goldChip">✨ <b id="goldCount" style="display:inline-block">0</b> golden</span>
     <span class="chip">⏱️ <b id="perSec">0</b> / sec</span>
     <span class="chip">✖️ <b id="multi">1x</b> multiplier</span>
     <span class="chip" id="modChip" style="color:#6a2fc0;border-color:#cdb4ff" hidden>🛠️ <b style="color:#6a2fc0">Modded</b></span>
@@ -218,7 +224,7 @@
 </aside>
 
 <div id="toast"></div>
-<button id="golden" aria-label="Golden carrot">🥕</button>
+<div id="goldTint"></div>
 
 <script>
 // boost: the equipped skin multiplies carrots per click
@@ -289,7 +295,7 @@ const SAVE_KEY = 'carrotClickerSave';
 const fresh = () => ({ carrots: 0, clicks: 0, autos: 0, mult: 1,
   carrotSkins: ['classic'], carrotSkin: 'classic', cursorSkins: ['default'], cursorSkin: 'default',
   trailSkins: ['none'], trailSkin: 'none', tapSkins: ['ripple'], tapSkin: 'ripple',
-  crit: 0, turbo: 0, farms: 0, tractors: 0, golden: 0, cellar: 0, lastSeen: Date.now() });
+  crit: 0, turbo: 0, farms: 0, tractors: 0, golden: 0, cellar: 0, goldenCaught: 0, lastSeen: Date.now() });
 let state = fresh();
 try { Object.assign(state, JSON.parse(localStorage.getItem(SAVE_KEY)) || {}); } catch {}
 // fall back to the default if an equipped item was removed from the game
@@ -728,7 +734,7 @@ function render() {
   $('perSec').textContent = fmt(perSec());
   $('multi').textContent = clickValue() + 'x';
   $('modChip').hidden = !state.modded;
-  $('shopBal').textContent = fmt(state.carrots);
+  $('goldCount').textContent = fmt(state.goldenCaught);  $('shopBal').textContent = fmt(state.carrots);
   document.title = `${fmt(state.carrots)} ${$('carrots').lastChild.textContent} · Carrot Clicker`;
   updateButtons();
 }
@@ -754,12 +760,20 @@ function scheduleGolden(first) {
   const secs = (first ? 30 : 60) + Math.random() * 60;
   goldenTimer = setTimeout(spawnGolden, secs / (1 + state.golden * .5) * 1000);
 }
-// flies across the screen (left→right or right→left) in a wavy line
 function spawnGolden() {
-  const g = $('golden');
+  flyGolden();
+  scheduleGolden();
+}
+
+// one golden carrot flying across the screen (left→right or right→left) in a wavy line
+function flyGolden({ duration = 9000, rush = false } = {}) {
+  const g = document.createElement('button');
+  g.className = 'golden';
+  g.textContent = '🥕';
+  g.setAttribute('aria-label', 'Golden carrot');
+  g.style.top = (12 + Math.random() * 70) + 'vh';
+  document.body.appendChild(g);
   const w = innerWidth, dir = Math.random() < .5 ? 1 : -1;
-  g.style.top = (18 + Math.random() * 60) + 'vh';
-  g.style.display = 'block';
   const frames = [];
   for (let i = 0; i <= 12; i++) {
     const t = i / 12;
@@ -768,22 +782,40 @@ function spawnGolden() {
     const tilt = Math.sin(t * Math.PI * 6) * 15 + dir * 20;
     frames.push({ transform: `translate(${x}px, ${y}px) rotate(${tilt}deg)` });
   }
-  if (g.flight) g.flight.cancel();
-  g.flight = g.animate(frames, { duration: 9000, easing: 'linear' });
-  g.flight.onfinish = () => { g.style.display = 'none'; };
-  scheduleGolden();
+  const flight = g.animate(frames, { duration, easing: 'linear' });
+  flight.onfinish = () => g.remove();
+  g.addEventListener('pointerdown', e => {
+    flight.cancel();
+    g.remove();
+    catchGolden(e.clientX, e.clientY, rush);
+  });
 }
-$('golden').addEventListener('pointerdown', e => {
-  const g = $('golden');
-  if (g.flight) g.flight.cancel();
-  g.style.display = 'none';
-  const reward = Math.max(100, perSec() * 60, clickValue() * 50) * (1 + state.golden * .5);
+
+function catchGolden(x, y, rush) {
+  // rush carrots are worth a quarter each, since there are so many
+  const reward = Math.max(100, perSec() * 60, clickValue() * 50) * (1 + state.golden * .5) / (rush ? 4 : 1);
   state.carrots += reward;
-  burst(e.clientX, e.clientY);
-  spawnFloat('+' + fmt(reward), e.clientX, e.clientY, 'gold');
-  toast(`✨ Golden carrot! +${fmt(reward)} carrots`);
+  state.goldenCaught++;
+  burst(x, y);
+  spawnFloat('+' + fmt(reward), x, y, 'gold');
+  if (!rush) toast(`✨ Golden carrot! +${fmt(reward)} carrots`);
+  bump($('goldCount'));
+  if (state.goldenCaught % 50 === 0 && !rushing) goldenRush();
   render();
-});
+}
+
+// every 50 golden carrots caught: a wave of 30–40 of them and a golden screen tint
+let rushing = false;
+function goldenRush() {
+  rushing = true;
+  const n = 30 + Math.floor(Math.random() * 11);
+  $('goldTint').classList.add('on');
+  toast(`✨ GOLDEN RUSH! ${n} golden carrots incoming!`);
+  for (let i = 0; i < n; i++) {
+    setTimeout(() => flyGolden({ duration: 4500 + Math.random() * 2500, rush: true }), i * 120 + Math.random() * 200);
+  }
+  setTimeout(() => { $('goldTint').classList.remove('on'); rushing = false; }, n * 120 + 7500);
+}
 
 // ---------- carrot cellar: offline earnings ----------
 if (state.cellar && state.lastSeen) {
