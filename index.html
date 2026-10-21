@@ -124,6 +124,8 @@
   .buy:hover:not(:disabled) { filter: brightness(1.08); box-shadow: 0 4px 12px rgba(0, 0, 0, .15); }
   .buy:active:not(:disabled) { filter: brightness(.9); box-shadow: none; }
   .buy:disabled { background: var(--line); color: var(--muted); cursor: not-allowed; }
+  /* fixed button width + text that can't grow the row: so after buying, nothing shifts under your cursor */
+  .item .buy { width: clamp(80px, 30%, 112px); flex-shrink: 0; text-align: center; white-space: normal; line-height: 1.2; }
   .buy.ghost { background: var(--text); }
   .buy.done, .buy.done:disabled { background: var(--green); color: #fff; cursor: default; }
 
@@ -364,14 +366,14 @@
   #lobby.hide { opacity: 0; transform: scale(1.08); pointer-events: none; }
   #lobbyBg { position: absolute; inset: 0; overflow: hidden; }
   #lobbyBg span { position: absolute; top: 0; font-size: 26px; opacity: .5; animation: lobbyFloat linear infinite; pointer-events: none; }
-  /* easter egg carrots: green, glowing and flashing, and tappable */
+  /* easter egg carrots look like the others, but flash a soft green twice (then stop) and can be tapped */
   #lobbyBg span.egg {
-    opacity: 1; font-size: 38px; cursor: pointer; pointer-events: auto; padding: 8px;
-    animation: lobbyFloat linear forwards, eggFlash .45s ease-in-out infinite alternate;
+    opacity: .6; cursor: pointer; pointer-events: auto; padding: 8px; margin: -8px;
+    animation: lobbyFloat linear forwards, eggFlash .7s ease-in-out 1.2s 2;
   }
   @keyframes eggFlash {
-    from { filter: hue-rotate(75deg) saturate(1.8) brightness(1) drop-shadow(0 0 4px #3dff6a); }
-    to   { filter: hue-rotate(75deg) saturate(2.4) brightness(1.5) drop-shadow(0 0 16px #3dff6a); }
+    0%, 100% { filter: none; }
+    50% { filter: hue-rotate(70deg) saturate(1.3) drop-shadow(0 0 6px rgba(80, 230, 120, .45)); }
   }
   @keyframes lobbyFloat { from { transform: translateY(110vh) rotate(0deg); } to { transform: translateY(-15vh) rotate(360deg); } }
   /* the column itself lets taps through to the green carrots behind it; only its buttons catch taps */
@@ -601,12 +603,12 @@ function pixelArrowSvg(scale = 2, [outline, fill] = ['#1d1f24', '#fff']) {
 function arrowSvg(color, size = 32, grad = null) {
   const arrow = 'M5 3 L5 24 L10.5 19 L14.5 27.5 L19 25.5 L15 17.5 L22.5 17.5 Z';
   const id = grad ? 'ag' + grad.join('').replace(/#/g, '') : '';
-  return `<svg xmlns="http://www.w3.org/2000/svg" width="${size}" height="${size}" viewBox="0 0 32 32">` +
+  // crisp: one solid dark outline, no soft gray shadow behind it
+  return `<svg xmlns="http://www.w3.org/2000/svg" width="${size}" height="${size}" viewBox="0 0 32 32" shape-rendering="geometricPrecision">` +
     (grad ? `<defs><linearGradient id="${id}" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="${grad[0]}"/>` +
       `<stop offset="1" stop-color="${grad[1]}"/></linearGradient></defs>` : '') +
-    `<path d="${arrow}" transform="translate(1.5 1.5)" fill="rgba(0,0,0,.18)" stroke="rgba(0,0,0,.18)" stroke-width="2.6" stroke-linejoin="round"/>` +
-    `<path d="${arrow}" fill="${grad ? `url(#${id})` : color}" stroke="#1d1f24" stroke-width="2.6" stroke-linejoin="round"/>` +
-    `<path d="M7.6 8 L7.6 15" stroke="#fff" stroke-width="1.8" stroke-linecap="round" opacity=".7"/></svg>`;
+    `<path d="${arrow}" fill="${grad ? `url(#${id})` : color}" stroke="#14161b" stroke-width="2.2" stroke-linejoin="round"/>` +
+    `<path d="M7.4 8 L7.4 15" stroke="#fff" stroke-width="1.6" stroke-linecap="round" opacity=".75"/></svg>`;
 }
 
 const CURSOR_SKINS = [
@@ -629,12 +631,8 @@ const CURSOR_SKINS = [
   { id: 'king',    name: 'King Bunny', cost: 1e9, hat: '👑', icon: CROWNED_BUNNY },   // always the most expensive
   // secret: only shows in the shop once earned by beating the game ADMIN_WINS times
   { id: 'admin',   name: 'The Admin Bunny', secret: true, hat: '🎩', icon: HAT_BUNNY },
-  // easter eggs: only from the flashing green carrots in the lobby, and only until you restart
+  // easter egg: only from the flashing green carrots in the lobby, and only until you restart
   { id: 'egg_alien', name: 'Alien',       egg: true, emoji: '👽' },
-  { id: 'egg_dino',  name: 'Dino',        egg: true, emoji: '🦖' },
-  { id: 'egg_frog',  name: 'Frog',        egg: true, emoji: '🐸' },
-  { id: 'egg_pizza', name: 'Pizza',       egg: true, emoji: '🍕' },
-  { id: 'egg_egg',   name: 'Easter Egg',  egg: true, emoji: '🥚' },
 ];
 
 // shop icon for a line trail: a short slanted streak, fading in from the tail
@@ -675,13 +673,9 @@ const TRAILS = [
     line: { life: 420, width: 7, color: f => `hsl(${235 + 45 * f} 100% ${58 + 14 * f}%)`, glow: '#8a4dff', blur: 18 } },
   { id: 'sunset',  name: 'Sunset',       cost: 650000, icon: lineIcon('#ffb347', '#ff4fa3'),
     line: { life: 420, width: 7, color: f => `hsl(${330 + 60 * f} 100% 62%)`, glow: '#ff7a5a', blur: 16 } },
-  // easter egg trails (lobby green carrots only)
-  { id: 'egg_glitch', name: 'Glitch',    egg: true, icon: lineIcon('#ff3dd8', '#2ef2ff'),
-    line: { life: 260, width: 5, color: f => Math.floor(f * 12) % 2 ? '#ff3dd8' : '#2ef2ff', glow: '#ff3dd8', blur: 8, jitter: 9 } },
+  // easter egg trail (lobby green carrots only)
   { id: 'egg_matrix', name: 'Matrix',    egg: true, icon: lineIcon('#7dff9a', '#0a8a3a'),
     line: { life: 380, width: 4, color: f => `hsl(135 100% ${28 + 42 * f}%)`, glow: '#3dff6a', blur: 12, jitter: 3 } },
-  { id: 'egg_gum',    name: 'Bubblegum', egg: true, icon: lineIcon('#ff9ad5'),
-    line: { life: 420, width: 12, color: () => '#ff9ad5', glow: '#ff6fc4', blur: 10 } },
   { id: 'shadow',  name: 'Admin Shadow', secret: true, icon: lineIcon('#000', '#555'),
     line: { life: 250, width: 4.5, color: () => '#000' } },
 ];
@@ -766,6 +760,23 @@ const save = () => {
 };
 
 const $ = id => document.getElementById(id);
+
+// Buttons react the moment a mouse/touchpad button is pressed, instead of waiting for a full click
+// (a click is cancelled if the pointer wobbles off the button between press and release, which
+// made laptop touchpads feel like you had to hover first). Finger taps on phones still use a normal
+// click, so you can scroll the shop without buying things. Keyboard Enter/Space also still works.
+function onPress(el, fn) {
+  let pressedAt = -1e9;
+  el.addEventListener('pointerdown', e => {
+    if (e.pointerType === 'touch' || e.button !== 0) return;
+    pressedAt = performance.now();
+    fn(e);
+  });
+  el.addEventListener('click', e => {
+    if (performance.now() - pressedAt < 1000) return;   // this press was already handled
+    fn(e);
+  });
+}
 let lobbyOpen = true;   // the start screen shows on every visit until Play is pressed
 const skinBoost = () => (CARROT_SKINS.find(s => s.id === state.carrotSkin) || CARROT_SKINS[0]).boost;
 const worldOf = id => WORLDS.find(w => w.id === id) || WORLDS[0];
@@ -1200,40 +1211,50 @@ const SKIN_FX = {
 };
 
 const cursorCache = {};
-function emojiCursor(emoji) {
-  if (cursorCache[emoji]) return cursorCache[emoji];
+// Every cursor is made at normal size AND double size; high-res laptop/phone screens use the
+// double-size one, so cursors stay sharp instead of blurry. x/y = the point that does the clicking.
+function crispCursor(make, x, y) {
+  const url1 = make(1), url2 = make(2);
+  return `-webkit-image-set(url("${url1}") 1x, url("${url2}") 2x) ${x} ${y}, url("${url1}") ${x} ${y}, pointer`;
+}
+const FONT = '"Segoe UI Emoji", "Apple Color Emoji", "Noto Color Emoji", sans-serif';
+function canvasURL(size, scale, draw) {
   const c = document.createElement('canvas');
-  c.width = c.height = 40;
+  c.width = c.height = size * scale;
   const x = c.getContext('2d');
-  x.font = '30px "Segoe UI Emoji", "Apple Color Emoji", "Noto Color Emoji", sans-serif';
+  x.scale(scale, scale);
   x.textAlign = 'center';
   x.textBaseline = 'middle';
-  x.fillText(emoji, 20, 22);
-  return cursorCache[emoji] = `url(${c.toDataURL()}) 10 6, pointer`;
+  draw(x);
+  return c.toDataURL();
+}
+const svgURL = svg => 'data:image/svg+xml,' + encodeURIComponent(svg);
+
+function emojiCursor(emoji) {
+  return cursorCache[emoji] ??= crispCursor(s => canvasURL(40, s, x => {
+    x.font = `30px ${FONT}`;
+    x.fillText(emoji, 20, 22);
+  }), 10, 6);
 }
 // a bunny emoji wearing a hat emoji (crown or top hat), drawn as a cursor
 function hatBunnyCursor(hat) {
-  if (cursorCache[hat + 'bunny']) return cursorCache[hat + 'bunny'];
-  const c = document.createElement('canvas');
-  c.width = c.height = 48;
-  const x = c.getContext('2d');
-  x.font = '30px "Segoe UI Emoji", "Apple Color Emoji", "Noto Color Emoji", sans-serif';
-  x.textAlign = 'center';
-  x.textBaseline = 'middle';
-  x.fillText('🐰', 22, 30);
-  x.translate(23, 18);   // hat rests right on top of the head
-  x.rotate(-.2);
-  x.font = '17px "Segoe UI Emoji", "Apple Color Emoji", "Noto Color Emoji", sans-serif';
-  x.fillText(hat, 0, 0);
-  return cursorCache[hat + 'bunny'] = `url(${c.toDataURL()}) 12 14, pointer`;
+  return cursorCache[hat + 'bunny'] ??= crispCursor(s => canvasURL(48, s, x => {
+    x.font = `30px ${FONT}`;
+    x.fillText('🐰', 22, 30);
+    x.translate(23, 18);   // hat rests right on top of the head
+    x.rotate(-.2);
+    x.font = `17px ${FONT}`;
+    x.fillText(hat, 0, 0);
+  }), 12, 14);
 }
 
 function applyCursorSkin() {
   const s = CURSOR_SKINS.find(k => k.id === state.cursorSkin) || CURSOR_SKINS[0];
   const html = document.documentElement;
+  const pixelColors = s.pixel === true ? undefined : s.pixel;
   const cursor = s.emoji ? emojiCursor(s.emoji)
-    : s.arrow ? `url("data:image/svg+xml,${encodeURIComponent(arrowSvg(s.arrow, 32, s.grad))}") 5 3, pointer`
-    : s.pixel ? `url("data:image/svg+xml,${encodeURIComponent(pixelArrowSvg(2, s.pixel === true ? undefined : s.pixel))}") 1 1, pointer`
+    : s.arrow ? crispCursor(k => svgURL(arrowSvg(s.arrow, 32 * k, s.grad)), 5, 3)
+    : s.pixel ? crispCursor(k => svgURL(pixelArrowSvg(2 * k, pixelColors)), 1, 1)
     : s.hat ? hatBunnyCursor(s.hat) : null;
   html.classList.toggle('custom-cursor', !!cursor);
   if (cursor) html.style.setProperty('--cursor', cursor);
@@ -1289,7 +1310,9 @@ function renderShop(animate = true) {
   const modBtn = state.modded
     ? '<button class="mod-btn normal" id="modBtn">↩️ Back to normal mode</button>'
     : '<button class="mod-btn" id="modBtn">🔓 Unlock all (modded)</button>';
+  const scroll = $('list').scrollTop;   // keep your place in the list when it redraws
   $('list').innerHTML = html + modBtn + '<button class="reset" id="reset">🗑️ Reset all progress</button>';
+  $('list').scrollTop = scroll;
   updateButtons();
 }
 
@@ -1530,11 +1553,11 @@ function updatePortal() {
 }
 const openPortal = () => { closeShop(); renderPortal(); updatePortal(); document.body.classList.add('portal-open'); };
 const closePortal = () => document.body.classList.remove('portal-open');
-$('portalBtn').addEventListener('click', openPortal);
+onPress($('portalBtn'), openPortal);
 $('closePortal').addEventListener('pointerdown', closePortal);   // close on press: instant, and quick touchpad taps can't miss
 $('portalScrim').addEventListener('pointerdown', closePortal);
 
-$('worldList').addEventListener('click', e => {
+onPress($('worldList'), e => {
   const btn = e.target.closest('.buy');
   if (!btn || btn.disabled) return;
   if ('end' in btn.dataset) { closePortal(); endGame(); return; }
@@ -1628,9 +1651,9 @@ function endGame() {
   fling(r.left + r.width / 2, r.top + 60, { n: 14, make: () => emo('⭐', 22), dist: [90, 180], dur: 1200, spin: 360, even: true });
 }
 
-$('endBtn').addEventListener('click', showEndChoice);
+onPress($('endBtn'), showEndChoice);
 
-$('endModal').addEventListener('click', e => {
+onPress($('endModal'), e => {
   const act = e.target.closest('[data-act]')?.dataset.act;
   if (act === 'end') endGame();
   else if (act === 'keep') { hideEndModal(); render(); }
@@ -1676,7 +1699,7 @@ function exitModded() {
   toast('↩️ Back to normal mode');
 }
 
-$('list').addEventListener('click', e => {
+onPress($('list'), e => {
   if (e.target.id === 'modBtn') {
     state.modded ? exitModded() : enterModded();
     return;
@@ -1732,7 +1755,7 @@ function moveTabPill() {
   $('pill').style.width = active.offsetWidth + 'px';
   $('pill').style.transform = `translateX(${active.offsetLeft - 4}px)`;
 }
-$('tabs').addEventListener('click', e => {
+onPress($('tabs'), e => {
   const t = e.target.closest('.tab');
   if (!t) return;
   document.querySelectorAll('.tab').forEach(x => x.classList.toggle('active', x === t));
@@ -1743,14 +1766,16 @@ $('tabs').addEventListener('click', e => {
 
 const openShop = () => { document.body.classList.add('shop-open'); renderShop(); requestAnimationFrame(moveTabPill); };
 const closeShop = () => document.body.classList.remove('shop-open');
-$('shopBtn').addEventListener('click', openShop);
+onPress($('shopBtn'), openShop);
 $('closeShop').addEventListener('pointerdown', closeShop);
 // tapping outside the shop closes it, except the carrot and golden carrots, which keep working while it's open
+// (capture phase: this must look at the tap before a purchase redraws the shop list, or the old button
+// would no longer be "inside the shop" and the shop would close itself)
 document.addEventListener('pointerdown', e => {
   if (!document.body.classList.contains('shop-open')) return;
   if (e.target.closest('#shop, #shopBtn, #carrotBtn, .golden, #endModal, #lobby')) return;
   closeShop();
-});
+}, true);
 addEventListener('keydown', e => { if (e.key === 'Escape') { closeShop(); closePortal(); closeQuests(); } });
 
 // ---------- daily quests: a new set every day at 6:00 AM (player's local time) ----------
@@ -1851,10 +1876,10 @@ function updateQuestRows() {
 }
 const openQuests = () => { closeShop(); closePortal(); updateQuestUI(); renderQuests(); document.body.classList.add('quests-open'); };
 const closeQuests = () => document.body.classList.remove('quests-open');
-$('questBtn').addEventListener('click', openQuests);
+onPress($('questBtn'), openQuests);
 $('closeQuests').addEventListener('pointerdown', closeQuests);
 $('questScrim').addEventListener('pointerdown', closeQuests);
-$('questList').addEventListener('click', e => {
+onPress($('questList'), e => {
   const btn = e.target.closest('[data-claim]');
   if (!btn) return;
   const q = todaysQuests.find(x => x.id === btn.dataset.claim);
@@ -1878,13 +1903,20 @@ for (let i = 0; i < 12; i++) {
 }
 
 // ---------- easter eggs: flashing green carrots float up the lobby; tap one for a secret item ----------
-const EGG_LABEL = { cursor: 'cursor', trail: 'trail', tap: 'tap effect' };
+const EGG_LABEL = { cursor: ' cursor', trail: ' trail', tap: '' };   // "Party Explosion" already says what it is
 function spawnEggCarrot() {
-  if (!lobbyOpen || document.hidden) return;
-  const s = document.createElement('span');
-  s.className = 'egg';
-  s.textContent = '🥕';
-  s.style.cssText = `left:${rnd(4, 88)}%;animation-duration:${rnd(7, 10)}s, .45s`;
+  // only one at a time, and only while the lobby is showing
+  if (lobbyOpen && !document.hidden && !document.querySelector('#lobbyBg .egg')) {
+    const s = document.createElement('span');
+    s.className = 'egg';
+    s.textContent = '🥕';
+    s.style.cssText = `left:${rnd(4, 88)}%;font-size:${rnd(22, 32)}px;animation-duration:${rnd(9, 13)}s, .7s`;
+    addEggListeners(s);
+    $('lobbyBg').appendChild(s);
+  }
+  setTimeout(spawnEggCarrot, rnd(9000, 16000));   // rare: a new chance every 9–16 seconds
+}
+function addEggListeners(s) {
   s.addEventListener('animationend', e => { if (e.animationName === 'lobbyFloat') s.remove(); });
   s.addEventListener('pointerdown', e => {
     if (e.button !== 0) return;
@@ -1895,33 +1927,33 @@ function spawnEggCarrot() {
     fling(r.left + r.width / 2, r.top + r.height / 2, { n: 10, make: sparkle, dist: [30, 70], dur: 600 });
     giveEgg();
   });
-  $('lobbyBg').appendChild(s);
 }
-setInterval(spawnEggCarrot, 3500);
-setTimeout(spawnEggCarrot, 1800);   // the first one shows up soon after the lobby loads
+setTimeout(spawnEggCarrot, rnd(3000, 6000));   // the first chance comes a few seconds after the lobby loads
 
 // pick a random easter egg you don't have yet (a cursor, a trail, or the Party Explosion) and equip it
+// there are 3 easter eggs (Alien cursor, Matrix trail, Party Explosion). New ones come first;
+// once you have all 3, more green carrots just give you one of them again.
 function giveEgg() {
-  const options = Object.entries(EGG_KINDS).map(([kind, list]) =>
-    [kind, list.filter(s => s.egg && !state[kind + 'Skins'].includes(s.id))]).filter(([, l]) => l.length);
-  if (!options.length) return toast('🥚 You found every easter egg! Restart the game to hunt for them again.');
-  const [kind, list] = options[Math.random() * options.length | 0];
-  const item = list[Math.random() * list.length | 0];
+  const all = Object.entries(EGG_KINDS).flatMap(([kind, list]) => list.filter(s => s.egg).map(item => [kind, item]));
+  const missing = all.filter(([kind, item]) => !state[kind + 'Skins'].includes(item.id));
+  const pool = missing.length ? missing : all;
+  const [kind, item] = pool[Math.random() * pool.length | 0];
   if (!isEgg(kind, state[kind + 'Skin'])) eggPrev[kind] = state[kind + 'Skin'];
-  state[kind + 'Skins'].push(item.id);
+  if (!state[kind + 'Skins'].includes(item.id)) state[kind + 'Skins'].push(item.id);
   state[kind + 'Skin'] = item.id;
   if (kind === 'cursor') applyCursorSkin();
-  toast(`🥚 Easter egg! ${item.emoji || item.icon.length < 5 && item.icon || ''} ${item.name} ${EGG_LABEL[kind]}, equipped until you restart`);
+  const emoji = item.emoji || (item.icon.length < 5 ? item.icon : '✨');
+  toast(`${emoji} You unlocked the ${item.name}${EGG_LABEL[kind]}!`);
   renderShop();
 }
-$('playBtn').addEventListener('click', () => {
+onPress($('playBtn'), () => {
   lobbyOpen = false;
   $('lobby').classList.add('hide');
   last = performance.now();
   // once it has faded out, remove it completely so its animations stop using the graphics card
   setTimeout(() => { $('lobby').style.display = 'none'; }, 650);
 });
-$('lobbyQuests').addEventListener('click', openQuests);
+onPress($('lobbyQuests'), openQuests);
 
 // ---------- loop ----------
 // only touch the page when a value actually changed: rewriting text every frame makes the browser
