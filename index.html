@@ -1051,9 +1051,31 @@ let trailOffset = { x: 0, y: 0 };   // set by applyCursorSkin()
 addEventListener('pointermove', e => {
   const t = TRAILS.find(k => k.id === state.trailSkin);
   if (!t || t.id === 'none') return;
-  if (t.line) {   // line trails just record the point; drawLineTrail() draws them every frame
-    const j = t.line.jitter || 0;
-    linePts.push({ x: e.clientX + trailOffset.x + rnd(-j, j), y: e.clientY + trailOffset.y + rnd(-j, j), t: performance.now() });
+  if (t.line) {   // line trails just record points; drawLineTrail() draws them every frame
+    const j = t.line.jitter || 0, now = performance.now();
+    // every in-between mouse position the browser saw since last frame, so fast swipes stay smooth
+    const moves = e.getCoalescedEvents?.() || [];
+    for (const m of moves.length ? moves : [e]) {
+      linePts.push({ x: m.clientX + trailOffset.x + rnd(-j, j), y: m.clientY + trailOffset.y + rnd(-j, j), t: now });
+    }
+    // the real cursor is drawn instantly but the page a frame later, so reach a little ahead to where
+    // the mouse is about to be (the browser's own prediction if it has one, otherwise from the speed)
+    const x = e.clientX + trailOffset.x, y = e.clientY + trailOffset.y;
+    const guess = e.getPredictedEvents?.() || [];
+    const g = guess[guess.length - 1];
+    let hx, hy;
+    if (g) { hx = g.clientX + trailOffset.x; hy = g.clientY + trailOffset.y; }
+    else if (lastMove && now - lastMove.t > 0 && now - lastMove.t < 100) {
+      const k = 16 / (now - lastMove.t);   // speed × one screen refresh (~16 ms)
+      hx = x + (x - lastMove.x) * k;
+      hy = y + (y - lastMove.y) * k;
+    }
+    if (hx !== undefined) {
+      // never reach more than 60px ahead, so a sudden flick can't overshoot wildly
+      const dx = hx - x, dy = hy - y, len = Math.hypot(dx, dy), s = len > 60 ? 60 / len : 1;
+      lineHead = { x: x + dx * s, y: y + dy * s, t: now };
+    }
+    lastMove = { x, y, t: now };
     lineCfg = t.line;
     return;
   }
@@ -1075,7 +1097,7 @@ let lastPixel = '';
 // line trails: keep the last fraction of a second of mouse points and draw them as one smooth line
 // that gets thinner (and shifts color) toward the tail, so it looks like a short line chasing the cursor
 const lineCanvas = $('lineTrail'), lineCtx = lineCanvas.getContext('2d');
-let linePts = [], lineCfg = null;
+let linePts = [], lineCfg = null, lineHead = null, lastMove = null;
 function sizeLineCanvas() {
   const d = devicePixelRatio || 1;
   lineCanvas.width = innerWidth * d;
@@ -1103,6 +1125,16 @@ function drawLineTrail(now) {
     lineCtx.beginPath();
     lineCtx.moveTo(a.x, a.y);
     lineCtx.lineTo(b.x, b.y);
+    lineCtx.stroke();
+  }
+  // while the mouse is moving, stretch the tip forward to the predicted spot so it meets the cursor
+  const tip = linePts[linePts.length - 1];
+  if (tip && lineHead && now - lineHead.t < 50) {
+    lineCtx.strokeStyle = c.color(1);
+    lineCtx.lineWidth = .5 + c.width;
+    lineCtx.beginPath();
+    lineCtx.moveTo(tip.x, tip.y);
+    lineCtx.lineTo(lineHead.x, lineHead.y);
     lineCtx.stroke();
   }
 }
