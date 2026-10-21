@@ -150,6 +150,17 @@
   }
   #toast.show { transform: translate(-50%, 0); }
 
+  /* shows in Space World once you have enough carrots to finish */
+  #endBtn {
+    position: fixed; left: 50%; bottom: 90px; transform: translateX(-50%); z-index: 10;
+    border: none; border-radius: 999px; padding: 14px 26px; cursor: pointer;
+    background: linear-gradient(135deg, #ffd23f, #ff9a1a); color: #3b2300; font: inherit; font-weight: 800; font-size: 16px;
+    box-shadow: 0 0 0 0 rgba(255, 196, 40, .6), 0 10px 30px rgba(255, 160, 30, .35); animation: endPulse 1.8s ease-out infinite;
+  }
+  #endBtn[hidden] { display: none; }
+  #endBtn:hover { transform: translateX(-50%) scale(1.06); }
+  @keyframes endPulse { 70%, 100% { box-shadow: 0 0 0 18px rgba(255, 196, 40, 0), 0 10px 30px rgba(255, 160, 30, .35); } }
+
   /* ---------- carrot portal ---------- */
   #portalBtn {
     position: fixed; right: 24px; top: calc(50% + 64px); z-index: 10;
@@ -301,6 +312,7 @@
   <div class="list" id="list"></div>
 </aside>
 
+<button id="endBtn" hidden>🏁 End the game</button>
 <button id="portalBtn"><span class="icon">🌀</span>Carrot Portal</button>
 <div id="portalScrim"></div>
 <div id="portal" role="dialog" aria-label="Carrot Portal">
@@ -405,7 +417,7 @@ const fresh = () => ({ carrots: 0, clicks: 0, autos: 0, mult: 1,
   carrotSkins: ['classic'], carrotSkin: 'classic', cursorSkins: ['default'], cursorSkin: 'default',
   trailSkins: ['none'], trailSkin: 'none', tapSkins: ['ripple'], tapSkin: 'ripple',
   crit: 0, turbo: 0, farms: 0, tractors: 0, golden: 0, cellar: 0, goldenCaught: 0, lastSeen: Date.now(),
-  world: 'normal', worldsUnlocked: ['normal'], endOffered: false, magnet: 0, timesBeaten: 0 });
+  world: 'normal', worldsUnlocked: ['normal'], endOfferedGoal: 0, magnet: 0, timesBeaten: 0 });
 const END_GOAL = 1e8;   // carrots needed in Space World to finish the game
 let state = fresh();
 try { Object.assign(state, JSON.parse(localStorage.getItem(SAVE_KEY)) || {}); } catch {}
@@ -901,7 +913,7 @@ function showEndModal(html) {
 const hideEndModal = () => $('endModal').classList.remove('show');
 
 function showEndChoice() {
-  state.endOffered = true;
+  state.endOfferedGoal = END_GOAL;
   save();
   showEndModal(`<div class="big">🚀</div>
     <h2>You made it!</h2>
@@ -947,6 +959,8 @@ function endGame() {
   const r = $('endCard').getBoundingClientRect();
   fling(r.left + r.width / 2, r.top + 60, { n: 14, make: () => emo('⭐', 22), dist: [90, 180], dur: 1200, spin: 360, even: true });
 }
+
+$('endBtn').addEventListener('click', showEndChoice);
 
 $('endModal').addEventListener('click', e => {
   const act = e.target.closest('[data-act]')?.dataset.act;
@@ -1077,7 +1091,8 @@ function render() {
   $('beatCount').textContent = state.timesBeaten;
   if (document.body.classList.contains('portal-open')) updatePortal();
   // reaching 1M in Space World: offer to end the game (once)
-  if (state.world === 'space' && state.carrots >= END_GOAL && !state.endOffered) showEndChoice();
+  if (state.world === 'space' && state.carrots >= END_GOAL && state.endOfferedGoal < END_GOAL) showEndChoice();
+  $('endBtn').hidden = !(state.world === 'space' && state.carrots >= END_GOAL);
   $('goldCount').textContent = fmt(state.goldenCaught);
   $('shopBal').textContent = fmt(state.carrots);
   document.title = `${fmt(state.carrots)} ${$('carrots').lastChild.textContent} · Carrot Clicker`;
