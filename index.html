@@ -56,6 +56,14 @@
   .particle { position: fixed; width: 8px; height: 8px; border-radius: 50%; pointer-events: none; z-index: 25; }
   .float.crit { font-size: 30px; color: #ff3d6e; white-space: nowrap; }
   .float.gold { font-size: 28px; color: #e0a800; white-space: nowrap; }
+  .float.mega { font-size: 36px; color: #ff3d6e; white-space: nowrap; text-shadow: 0 3px 0 #fff, 0 0 18px rgba(255, 80, 120, .6); }
+  /* the 🔥 combo counter next to the carrot */
+  .combo {
+    position: absolute; right: 0; top: 34px; z-index: 3; pointer-events: none; white-space: nowrap;
+    font-size: 26px; font-weight: 900; rotate: 10deg; opacity: 0; transition: opacity .3s;
+    text-shadow: 0 2px 0 #fff, 0 0 14px rgba(255, 120, 30, .55);
+  }
+  .combo.show { opacity: 1; }
   #goldTint {
     position: fixed; inset: 0; z-index: 14; pointer-events: none; opacity: 0; transition: opacity .8s;
     background: radial-gradient(circle at 50% 45%, rgba(255, 220, 80, .12), rgba(255, 190, 30, .3));
@@ -461,6 +469,7 @@
   <div class="carrot-wrap" id="wrap">
     <div class="rays"></div>
     <div class="glowfx"></div>
+    <div id="combo" class="combo"></div>
     <div class="shadow"></div>
     <button id="carrotBtn" aria-label="Click the carrot">
       <svg viewBox="0 0 200 260" aria-hidden="true">
@@ -653,7 +662,7 @@ const CURSOR_SKINS = [
   { id: 'dragon',  name: 'Dragon',   cost: 2e7,    emoji: '🐉' },
   { id: 'diamond', name: 'Diamond',  cost: 1e8,    emoji: '💎' },
   { id: 'galaxy',  name: 'Galaxy Pointer', cost: 3e8, arrow: '#7b3fe0', grad: ['#2a2f8a', '#ff5fd1'], icon: arrowSvg('#7b3fe0', 32, ['#2a2f8a', '#ff5fd1']) },
-  { id: 'queen',   name: 'Queen Bunny', cost: 1e8, hat: '👑', tint: QUEEN_TINT, icon: QUEEN_BUNNY },
+  { id: 'queen',   name: 'Queen Bunny', cost: 5e8, hat: '👑', tint: QUEEN_TINT, icon: QUEEN_BUNNY },
   { id: 'king',    name: 'King Bunny', cost: 1e9, hat: '👑', icon: CROWNED_BUNNY },   // always the most expensive
   // secret: only shows in the shop once earned by beating the game ADMIN_WINS times
   { id: 'admin',   name: 'The Admin Bunny', secret: true, hat: '🎩', icon: HAT_BUNNY },
@@ -708,11 +717,21 @@ const TRAILS = [
 
 const TAPS = [
   { id: 'ripple',   name: 'Ripple',           cost: 0,      icon: '⭕' },
+  { id: 'snowburst',name: 'Snow Burst',       cost: 8000,   icon: '❄️' },
+  { id: 'coins',    name: 'Coin Shower',      cost: 12000,  icon: '🪙' },
   { id: 'stars',    name: 'Star Pop',         cost: 15000,  icon: '🌟' },
+  { id: 'ink',      name: 'Ink Splat',        cost: 18000,  icon: '🖋️' },
+  { id: 'sparklering', name: 'Sparkle Ring',  cost: 22000,  icon: '✨' },
   { id: 'pixels',   name: 'Pixel Burst',      cost: 25000,  icon: '👾' },
+  { id: 'fireball', name: 'Fireball',         cost: 30000,  icon: '🔥' },
   { id: 'carrots',  name: 'Carrot Explosion', cost: 40000,  icon: '🥕' },
+  { id: 'vortex',   name: 'Vortex',           cost: 45000,  icon: '🌀' },
+  { id: 'neonrings',name: 'Neon Rings',       cost: 55000,  icon: '💠' },
   { id: 'shockwave',name: 'Shockwave',        cost: 60000,  icon: '💫' },
+  { id: 'fruit',    name: 'Fruit Salad',      cost: 70000,  icon: '🍓' },
+  { id: 'meteor',   name: 'Meteor Strike',    cost: 90000,  icon: '☄️' },
   { id: 'firework', name: 'Firework',         cost: 100000, icon: '🎆' },
+  { id: 'blackhole',name: 'Black Hole',       cost: 150000, icon: '🕳️' },
   { id: 'lightning',name: 'Lightning',        cost: 250000, icon: '⚡' },
   { id: 'galaxy',   name: 'Galaxy Swirl',     cost: 750000, icon: '🌌' },
   { id: 'tophats',  name: 'Admin Top Hats',   secret: true, icon: '🎩' },
@@ -760,6 +779,7 @@ if (!CURSOR_SKINS.some(t => t.id === state.cursorSkin)) state.cursorSkin = 'defa
 if (!TRAILS.some(t => t.id === state.trailSkin)) state.trailSkin = 'none';
 if (!WORLDS.some(w => w.id === state.world)) state.world = 'normal';
 if (state.ended) { state.timesBeaten = Math.max(state.timesBeaten, 1); delete state.ended; }  // older saves
+if (state.modded) state.carrots = Infinity;   // saves can't store infinity, so put it back after loading
 if (!TAPS.some(t => t.id === state.tapSkin)) state.tapSkin = 'ripple';
 if (!state.tapSkins.includes('ripple')) state.tapSkins.push('ripple');
 if (state.cursorSkins.includes('admin')) grantAdmin({});   // older Admin Bunny owners also get its trail and tap effect
@@ -845,6 +865,7 @@ const UPGRADES = [
     cost: () => 500000, toast: '🧲 Golden carrots will come to you now!' },
 ];
 const fmt = n => {
+  if (!isFinite(n)) return 'Inf.';   // modded mode's infinite carrots
   n = Math.floor(n);
   if (n < 1e6) return n.toLocaleString();
   const u = ['K', 'M', 'B', 'T', 'Qa', 'Qi'];
@@ -925,15 +946,52 @@ function fling(x, y, { n = 8, make, dist = [40, 90], dur = 700, gravity = 0, spi
   }
 }
 
-function ripple(x, y, color, delay = 0) {
+// an expanding ring. size = how big it grows, width = line thickness, glow = soft light around it
+function ripple(x, y, color, delay = 0, { size = 5, width = 3, glow = false, dur = 600 } = {}) {
   const el = document.createElement('div');
   el.className = 'fx';
-  el.style.cssText = `left:${x}px;top:${y}px;width:24px;height:24px;border-radius:50%;border:3px solid ${color}`;
+  el.style.cssText = `left:${x}px;top:${y}px;width:24px;height:24px;border-radius:50%;border:${width}px solid ${color}` +
+    (glow ? `;box-shadow:0 0 12px ${color}, inset 0 0 8px ${color}` : '');
   document.body.appendChild(el);
   el.animate([
     { transform: 'translate(-50%,-50%) scale(.5)', opacity: .9 },
-    { transform: 'translate(-50%,-50%) scale(5)', opacity: 0 },
-  ], { duration: 600, delay, easing: 'cubic-bezier(.2,.8,.3,1)', fill: 'backwards' }).onfinish = () => el.remove();
+    { transform: `translate(-50%,-50%) scale(${size})`, opacity: 0 },
+  ], { duration: dur, delay, easing: 'cubic-bezier(.2,.8,.3,1)', fill: 'backwards' }).onfinish = () => el.remove();
+}
+
+// tiny twinkling dots scattered around the tap, for extra detail on every effect
+function sprinkle(x, y, n, color, radius = 50) {
+  for (let i = 0; i < n; i++) {
+    const a = Math.random() * Math.PI * 2, d = 10 + Math.random() * radius;
+    const el = dot(color, 2 + Math.random() * 3);
+    el.className = 'fx';
+    el.style.left = x + Math.cos(a) * d + 'px';
+    el.style.top = y + Math.sin(a) * d + 'px';
+    document.body.appendChild(el);
+    el.animate([
+      { transform: 'translate(-50%,-50%) scale(0)', opacity: 0 },
+      { transform: 'translate(-50%,-50%) scale(1.4)', opacity: 1, offset: .4 },
+      { transform: 'translate(-50%,-50%) scale(0)', opacity: 0 },
+    ], { duration: 500 + Math.random() * 400, delay: Math.random() * 200, fill: 'backwards' }).onfinish = () => el.remove();
+  }
+}
+
+// the opposite of fling: pieces start around the tap and get sucked into it
+function implode(x, y, { n = 14, make, dist = [70, 120], dur = 600, swirl = 0 }) {
+  for (let i = 0; i < n; i++) {
+    const el = make(i);
+    el.classList.add('fx');
+    el.style.left = x + 'px';
+    el.style.top = y + 'px';
+    document.body.appendChild(el);
+    const a = Math.random() * Math.PI * 2, d = dist[0] + Math.random() * (dist[1] - dist[0]);
+    const a2 = a + swirl;   // swirl: how far it curls around on the way in
+    el.animate([
+      { transform: `translate(calc(-50% + ${Math.cos(a) * d}px), calc(-50% + ${Math.sin(a) * d}px)) scale(1)`, opacity: 0 },
+      { transform: `translate(calc(-50% + ${Math.cos(a2) * d * .5}px), calc(-50% + ${Math.sin(a2) * d * .5}px)) scale(.9)`, opacity: 1, offset: .45 },
+      { transform: 'translate(-50%,-50%) scale(.2)', opacity: .8 },
+    ], { duration: dur * (.8 + Math.random() * .4), easing: 'cubic-bezier(.5,0,.9,.5)' }).onfinish = () => el.remove();
+  }
 }
 
 const square = (color, size) => {
@@ -964,15 +1022,15 @@ function shockRing(x, y, color, delay) {
   ], { duration: 420, delay, easing: 'cubic-bezier(.1,.7,.3,1)', fill: 'backwards' }).onfinish = () => el.remove();
 }
 // 5 zig-zag bolts shooting out, flickering
-function lightning(x, y) {
+function lightning(x, y, bolts = 5) {
   const ns = 'http://www.w3.org/2000/svg', S = 260;
   const svg = document.createElementNS(ns, 'svg');
   svg.setAttribute('width', S);
   svg.setAttribute('height', S);
   svg.classList.add('fx');
   svg.style.cssText = `left:${x - S / 2}px;top:${y - S / 2}px;overflow:visible;filter:drop-shadow(0 0 6px #ffe94d)`;
-  for (let b = 0; b < 5; b++) {
-    const a = b / 5 * Math.PI * 2 + Math.random() * .6, len = 70 + Math.random() * 45;
+  for (let b = 0; b < bolts; b++) {
+    const a = b / bolts * Math.PI * 2 + Math.random() * .6, len = 70 + Math.random() * 45;
     let pts = `${S / 2},${S / 2}`;
     for (let k = 1; k <= 5; k++) {
       const d = len * k / 5, j = (k % 2 ? 1 : -1) * (6 + Math.random() * 8);
@@ -991,14 +1049,14 @@ function lightning(x, y) {
     { duration: 420, easing: 'linear' }).onfinish = () => svg.remove();
 }
 // colorful dots spiraling outward
-function galaxy(x, y) {
-  for (let i = 0; i < 26; i++) {
+function galaxy(x, y, n = 26) {
+  for (let i = 0; i < n; i++) {
     const el = dot(`hsl(${200 + Math.random() * 130} 95% ${60 + Math.random() * 20}%)`, 4 + Math.random() * 4);
     el.classList.add('fx');
     el.style.left = x + 'px';
     el.style.top = y + 'px';
     document.body.appendChild(el);
-    const a0 = i / 26 * Math.PI * 2, frames = [];
+    const a0 = i / n * Math.PI * 2, frames = [];
     for (let k = 0; k <= 8; k++) {
       const a = a0 + k * .45, r = k * 13;
       frames.push({ transform: `translate(calc(-50% + ${Math.cos(a) * r}px), calc(-50% + ${Math.sin(a) * r}px))`, opacity: 1 - k / 9 });
@@ -1008,54 +1066,169 @@ function galaxy(x, y) {
   flash(x, y, 'rgba(180,140,255,.8)', 60);
 }
 
-function tapEffect(x, y, effect = state.tapSkin) {   // effect: which tap effect to play (default: the equipped one)
-  const orange = getComputedStyle(document.documentElement).getPropertyValue('--b2');
-  switch (effect) {
-    case 'stars':
-      fling(x, y, { n: 6, make: () => emo('⭐', 20), dist: [50, 90], spin: 360, even: true });
-      break;
-    case 'carrots':
-      fling(x, y, { n: 8, make: () => emo('🥕', 24), dist: [60, 110], dur: 900, gravity: 120, spin: 400 });
-      break;
-    case 'firework': {
-      const hue = Math.random() * 360;
-      fling(x, y, { n: 18, make: i => dot(`hsl(${hue + i * 8} 95% 60%)`, 7), dist: [80, 95], dur: 900, gravity: 30, even: true });
-      ripple(x, y, `hsl(${hue} 95% 60%)`);
-      break;
+// ---------- tap effects ----------
+// Every effect takes a "power" p from 1 (a single tap) up to 2.5 (a big combo): more pieces, flying further.
+const N = (n, p) => Math.round(n * p);            // how many pieces at this power
+const D = ([a, b], p) => [a * Math.sqrt(p), b * Math.sqrt(p)];   // how far they fly at this power
+const pick = list => list[Math.random() * list.length | 0];
+const confettiPiece = i => {
+  const d = document.createElement('div');
+  d.style.cssText = `width:7px;height:12px;border-radius:2px;background:${['#ff5fa2', '#ffd23f', '#5fd3ff', '#7cf08a', '#b07bff', '#ff8a2b'][i % 6]}`;
+  return d;
+};
+const glowText = (t, size, color) => {
+  const d = emo(t, size);
+  d.style.color = color;
+  d.style.textShadow = `0 0 8px ${color}`;
+  return d;
+};
+
+const TAP_FX = {
+  ripple: (x, y, p, c) => {
+    ripple(x, y, c, 0, { size: 4 + p });
+    ripple(x, y, c, 110, { size: 4 + p });
+    if (p > 1.4) ripple(x, y, '#fff', 220, { size: 3 + p, width: 2 });
+    sprinkle(x, y, N(3, p), c, 30 * p);
+  },
+  snowburst: (x, y, p) => {   // flakes burst out, then drift down slowly
+    flash(x, y, 'rgba(220,245,255,.9)', 40);
+    fling(x, y, { n: N(9, p), make: () => glowText('❄', 14 + Math.random() * 10, '#bfe9ff'), dist: D([30, 80], p), dur: 1500, gravity: 70, spin: 240 });
+    sprinkle(x, y, N(6, p), '#ffffff', 45 * p);
+  },
+  coins: (x, y, p) => {   // coins pop up and fall with a sparkle
+    fling(x, y, { n: N(7, p), make: () => emo('🪙', 20 + Math.random() * 6), dist: D([40, 100], p), dur: 1000, gravity: 170, spin: 720 });
+    sprinkle(x, y, N(6, p), '#ffd23f', 40 * p);
+  },
+  stars: (x, y, p) => {
+    fling(x, y, { n: N(6, p), make: () => emo('⭐', 18 + 3 * p), dist: D([50, 90], p), spin: 360, even: true });
+    sprinkle(x, y, N(5, p), '#ffe066', 35 * p);
+  },
+  ink: (x, y, p) => {   // splats of ink that soak in, plus a few drips running down
+    for (let i = 0; i < N(7, p); i++) {
+      const a = Math.random() * Math.PI * 2, r = Math.random() * 35 * p, s = 6 + Math.random() * 20;
+      const blob = dot(pick(['#1d1f24', '#2b1a4a', '#16213e']), s);
+      blob.className = 'fx';
+      blob.style.boxShadow = 'none';
+      blob.style.left = x + Math.cos(a) * r + 'px';
+      blob.style.top = y + Math.sin(a) * r + 'px';
+      document.body.appendChild(blob);
+      blob.animate([
+        { transform: 'translate(-50%,-50%) scale(0)', opacity: .9 },
+        { transform: 'translate(-50%,-50%) scale(1.15)', opacity: .9, offset: .15 },
+        { transform: 'translate(-50%,-50%) scale(1)', opacity: .85, offset: .6 },
+        { transform: 'translate(-50%,-50%) scale(1)', opacity: 0 },
+      ], { duration: 1100, easing: 'ease-out' }).onfinish = () => blob.remove();
     }
-    case 'pixels':
-      fling(x, y, { n: 14, make: i => square(['#ff7a1a', '#ffa24a', '#f26200', '#ffd166'][i % 4], 9), dist: [40, 110], dur: 750, gravity: 50 });
-      break;
-    case 'shockwave':
-      flash(x, y, 'rgba(255,255,255,.95)', 50);
-      shockRing(x, y, '#fff', 0);
-      shockRing(x, y, orange, 90);
-      break;
-    case 'lightning':
-      flash(x, y, 'rgba(255,240,120,.8)', 40);
-      lightning(x, y);
-      break;
-    case 'galaxy':
-      galaxy(x, y);
-      break;
-    case 'egg_party': {   // confetti + party poppers
-      const confetti = i => {
-        const d = document.createElement('div');
-        d.style.cssText = `width:7px;height:12px;border-radius:2px;background:${['#ff5fa2', '#ffd23f', '#5fd3ff', '#7cf08a', '#b07bff', '#ff8a2b'][i % 6]}`;
-        return d;
+    fling(x, y, { n: N(3, p), make: () => dot('#1d1f24', 5), dist: [8, 20], dur: 1300, gravity: 70 });
+  },
+  sparklering: (x, y, p) => {   // a spinning ring of sparkles
+    flash(x, y, 'rgba(255,255,255,.9)', 36);
+    fling(x, y, { n: N(10, p), make: () => glowText('✦', 16, '#ffd84d'), dist: D([70, 76], p), dur: 850, spin: 200, even: true });
+    fling(x, y, { n: N(6, p), make: () => glowText('✦', 11, '#ffffff'), dist: D([35, 40], p), dur: 700, spin: -200, even: true });
+  },
+  pixels: (x, y, p) => {
+    fling(x, y, { n: N(14, p), make: i => square(['#ff7a1a', '#ffa24a', '#f26200', '#ffd166'][i % 4], 9), dist: D([40, 110], p), dur: 750, gravity: 50 });
+    fling(x, y, { n: N(6, p), make: () => square('#fff', 5), dist: D([20, 50], p), dur: 500 });
+  },
+  fireball: (x, y, p) => {   // a hot glow, flames that rise, and embers that fall
+    flash(x, y, 'rgba(255,140,30,.95)', 60 * Math.sqrt(p));
+    fling(x, y, { n: N(14, p), make: () => dot(pick(['#ffd166', '#ff9a3c', '#ff5a1a']), 8 + Math.random() * 6), dist: D([15, 55], p), dur: 800, gravity: -90 });
+    fling(x, y, { n: N(6, p), make: () => dot('#ffb347', 3), dist: D([60, 120], p), dur: 900, gravity: 50 });
+  },
+  carrots: (x, y, p) => {
+    fling(x, y, { n: N(8, p), make: () => emo('🥕', 24), dist: D([60, 110], p), dur: 900, gravity: 120, spin: 400 });
+    sprinkle(x, y, N(4, p), '#ff8a2b', 40 * p);
+  },
+  vortex: (x, y, p) => {   // everything swirls in... then pops out
+    const dur = 520;
+    implode(x, y, { n: N(16, p), make: () => dot(pick(['#7b5cff', '#2ef2ff', '#ffffff']), 5), dist: D([60, 110], p), dur, swirl: 2.4 });
+    setTimeout(() => {
+      flash(x, y, 'rgba(160,140,255,.9)', 50);
+      ripple(x, y, '#7b5cff', 0, { size: 4 + p, glow: true });
+      sprinkle(x, y, N(6, p), '#2ef2ff', 40 * p);
+    }, dur);
+  },
+  neonrings: (x, y, p) => {   // three glowing neon rings, one after another
+    ['#ff3dd8', '#2ef2ff', '#b07bff'].forEach((c, i) => ripple(x, y, c, i * 90, { size: 4 + p, width: 4, glow: true, dur: 700 }));
+    sprinkle(x, y, N(5, p), '#ff3dd8', 40 * p);
+  },
+  shockwave: (x, y, p, c) => {
+    flash(x, y, 'rgba(255,255,255,.95)', 50 * Math.sqrt(p));
+    shockRing(x, y, '#fff', 0);
+    shockRing(x, y, c, 90);
+    if (p > 1.4) shockRing(x, y, '#ffd23f', 180);
+    fling(x, y, { n: N(8, p), make: () => dot('#fff', 4), dist: D([60, 100], p), dur: 500 });
+  },
+  fruit: (x, y, p) => {
+    fling(x, y, { n: N(8, p), make: () => emo(pick(['🍓', '🍋', '🍇', '🍉', '🍊', '🍒']), 22), dist: D([60, 115], p), dur: 1000, gravity: 140, spin: 500 });
+    fling(x, y, { n: N(8, p), make: () => dot(pick(['#ff4d6d', '#ffd23f', '#9b5de5', '#7cf08a']), 5), dist: D([30, 70], p), dur: 700, gravity: 60 });
+  },
+  meteor: (x, y, p) => {   // fiery rocks streak in from the sky and explode where you tapped
+    for (let i = 0; i < 1 + Math.round(p); i++) {
+      const ox = x + (Math.random() - .5) * 40 * p, oy = y + (Math.random() - .5) * 30 * p;
+      const rock = dot('#fff3c4', 12);
+      rock.className = 'fx';
+      rock.style.boxShadow = '-8px -8px 6px #ffb347, -16px -16px 9px rgba(255,120,30,.65), -26px -26px 12px rgba(255,80,30,.35)';
+      rock.style.left = ox + 'px';
+      rock.style.top = oy + 'px';
+      document.body.appendChild(rock);
+      const delay = i * 110;
+      rock.animate([
+        { transform: 'translate(calc(-50% - 170px), calc(-50% - 170px))', opacity: 1 },
+        { transform: 'translate(-50%, -50%)', opacity: 1 },
+      ], { duration: 280, delay, easing: 'ease-in', fill: 'backwards' }).onfinish = () => {
+        rock.remove();
+        flash(ox, oy, 'rgba(255,170,60,.95)', 46);
+        ripple(ox, oy, '#ff7a1a', 0, { size: 3.5 });
+        fling(ox, oy, { n: 8, make: () => dot(pick(['#ffd166', '#ff7a1a', '#7a4a2a']), 5), dist: [30, 70], dur: 650, gravity: 70 });
       };
-      flash(x, y, 'rgba(255,255,255,.9)', 50);
-      fling(x, y, { n: 22, make: confetti, dist: [60, 140], dur: 1000, gravity: 110, spin: 720 });
-      fling(x, y, { n: 4, make: i => emo(['🎉', '🎊', '🥳', '🎉'][i], 24), dist: [50, 90], dur: 900, gravity: 60, spin: 200, even: true });
-      break;
     }
-    case 'tophats':
-      fling(x, y, { n: 7, make: () => emo('🎩', 26), dist: [60, 115], dur: 950, gravity: 110, spin: 300 });
-      break;
-    default:
-      ripple(x, y, orange);
-      ripple(x, y, orange, 120);
-  }
+  },
+  firework: (x, y, p) => {   // burst, then a second crackle where the sparks land
+    const hue = Math.random() * 360;
+    fling(x, y, { n: N(18, p), make: i => dot(`hsl(${hue + i * 8} 95% 60%)`, 7), dist: D([80, 95], p), dur: 900, gravity: 30, even: true });
+    ripple(x, y, `hsl(${hue} 95% 60%)`);
+    setTimeout(() => sprinkle(x, y + 20, N(10, p), `hsl(${hue + 40} 95% 70%)`, 90 * Math.sqrt(p)), 450);
+  },
+  blackhole: (x, y, p) => {   // a dark hole opens, pulls everything in, then collapses with a flash
+    const hole = document.createElement('div');
+    hole.className = 'fx';
+    hole.style.cssText = `left:${x}px;top:${y}px;width:26px;height:26px;border-radius:50%;` +
+      'background:radial-gradient(circle, #000 45%, #2a0a4a 70%, transparent 72%);box-shadow:0 0 18px 6px rgba(140,60,255,.6)';
+    document.body.appendChild(hole);
+    hole.animate([
+      { transform: 'translate(-50%,-50%) scale(0)' },
+      { transform: `translate(-50%,-50%) scale(${1.6 * Math.sqrt(p)})`, offset: .35 },
+      { transform: `translate(-50%,-50%) scale(${1.9 * Math.sqrt(p)})`, offset: .8 },
+      { transform: 'translate(-50%,-50%) scale(0)' },
+    ], { duration: 900, easing: 'ease-in-out' }).onfinish = () => {
+      hole.remove();
+      flash(x, y, 'rgba(255,255,255,.95)', 50);
+      shockRing(x, y, '#b07bff', 0);
+    };
+    implode(x, y, { n: N(18, p), make: () => dot(pick(['#b07bff', '#ffffff', '#5fd3ff']), 4), dist: D([70, 130], p), dur: 700, swirl: 1.8 });
+  },
+  lightning: (x, y, p) => {
+    flash(x, y, 'rgba(255,240,120,.8)', 40);
+    lightning(x, y, N(5, p));
+    sprinkle(x, y, N(4, p), '#fff6a8', 60 * p);
+  },
+  galaxy: (x, y, p) => galaxy(x, y, N(26, p)),
+  tophats: (x, y, p) => {
+    fling(x, y, { n: N(7, p), make: () => emo('🎩', 26), dist: D([60, 115], p), dur: 950, gravity: 110, spin: 300 });
+    sprinkle(x, y, N(4, p), '#000', 40 * p);
+  },
+  egg_party: (x, y, p) => {   // confetti + party poppers
+    flash(x, y, 'rgba(255,255,255,.9)', 50);
+    fling(x, y, { n: N(22, p), make: confettiPiece, dist: D([60, 140], p), dur: 1000, gravity: 110, spin: 720 });
+    fling(x, y, { n: 4, make: i => emo(['🎉', '🎊', '🥳', '🎉'][i], 24), dist: [50, 90], dur: 900, gravity: 60, spin: 200, even: true });
+  },
+};
+
+// effect: which tap effect to play (default: the equipped one); power: 1 = normal, higher = bigger (combos)
+function tapEffect(x, y, effect = state.tapSkin, power = 1) {
+  const orange = getComputedStyle(document.documentElement).getPropertyValue('--b2');
+  (TAP_FX[effect] || TAP_FX.ripple)(x, y, power, orange);
 }
 
 // ---------- mouse trail ----------
@@ -1205,11 +1378,47 @@ $('carrotBtn').addEventListener('pointerdown', e => {
   questAdd('earned', gain);
   if (crit) questAdd('crits', 1);
   squish();
-  tapEffect(e.clientX, e.clientY);
+  addCombo();
+  tapEffect(e.clientX, e.clientY, state.tapSkin, comboPower());
   floatAboveCarrot((crit ? 'CRIT! +' : '+') + fmt(gain), crit ? 'crit' : '');
   bump($('carrots'));
+  if (isComboMilestone()) comboMilestone();
   render();
 });
+
+// ---------- tap combo: keep tapping quickly to build it; your tap effect grows with it ----------
+const COMBO_WINDOW = 650;   // ms you can wait between taps before the combo breaks
+let combo = 0, lastTapAt = 0;
+const comboPower = () => Math.min(1 + combo / 30, 2.5);
+const isComboMilestone = () => combo === 25 || combo === 50 || (combo >= 100 && combo % 50 === 0);
+function addCombo() {
+  const now = performance.now();
+  combo = now - lastTapAt < COMBO_WINDOW ? combo + 1 : 1;
+  lastTapAt = now;
+  const el = $('combo');
+  if (combo < 5) return;
+  el.textContent = `🔥 x${combo}`;
+  el.style.color = `hsl(${30 - (comboPower() - 1) * 40} 100% 50%)`;   // orange → red → pink as it heats up
+  el.classList.add('show');
+  el.animate([{ scale: 1 }, { scale: 1.35 }, { scale: 1 }], { duration: 180, easing: 'ease-out' });
+}
+function checkComboTimeout() {
+  if (combo && performance.now() - lastTapAt > COMBO_WINDOW) {
+    combo = 0;
+    $('combo').classList.remove('show');
+  }
+}
+// every combo milestone: a mega version of your tap effect, extra rings, a shake and a big shout
+function comboMilestone() {
+  const c = $('carrotBtn').getBoundingClientRect(), x = c.left + c.width / 2, y = c.top + c.height / 2;
+  tapEffect(x, y, state.tapSkin, 2.5);
+  shockRing(x, y, '#fff', 0);
+  shockRing(x, y, '#ffd23f', 120);
+  sprinkle(x, y, 18, '#ffd23f', 140);
+  floatAboveCarrot(`🔥 COMBO x${combo}!`, 'mega');
+  $('wrap').animate([{ translate: '0 0' }, { translate: '-7px 0' }, { translate: '7px 0' }, { translate: '-4px 0' },
+    { translate: '4px 0' }, { translate: '0 0' }], { duration: 380 });
+}
 
 // ---------- skins ----------
 function applyCarrotSkin() {
@@ -1746,14 +1955,14 @@ function refreshAll() {
 function enterModded() {
   state.backup = JSON.parse(JSON.stringify(state));
   state.modded = true;
-  state.carrots = 1e9;
+  state.carrots = Infinity;
   for (const u of UPGRADES) state[u.key] = u.max || Math.max(state[u.key], 10);
   for (const [kind, list] of Object.values(SKIN_TABS)) {
     state[kind + 'Skins'] = list.filter(s => !(s.secret || s.egg) || state[kind + 'Skins'].includes(s.id)).map(s => s.id);
   }
   state.worldsUnlocked = WORLDS.map(w => w.id);
   refreshAll();
-  toast('🔓 Modded mode: everything unlocked!');
+  toast('🔓 Modded mode: infinite carrots and everything unlocked!');
 }
 // normal mode: put the real save back exactly how it was
 function exitModded() {
@@ -2080,6 +2289,7 @@ function tick(now) {
   questAdd('earned', perSec() * dt);
   if (!lobbyOpen && !document.hidden) questAdd('seconds', dt);
   drawLineTrail(now);
+  checkComboTimeout();
   last = now;
   render();
   requestAnimationFrame(tick);
