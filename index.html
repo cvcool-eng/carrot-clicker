@@ -409,6 +409,18 @@
   }
   .lobby-btn:hover { filter: brightness(1.06); box-shadow: 0 12px 28px rgba(255, 122, 26, .4); }
   .lobby-btn:active { filter: brightness(.92); }
+  /* lobby pieces pop bigger on hover. Uses `scale` (separate from their bob/rise animations), and only
+     ever grows, so the button never slips out from under the cursor */
+  .lobby-btn, #bestFlex, #lobby h1, .lobby-carrot { transition: scale .3s cubic-bezier(.2, .9, .3, 1.4); }
+  .lobby-inner #bestFlex, .lobby-inner h1, .lobby-inner .lobby-carrot { pointer-events: auto; }
+  .lobby-btn:hover { scale: 1.08; }
+  #bestFlex:hover, #lobby h1:hover { scale: 1.07; }
+  .lobby-carrot:hover { scale: 1.12; }
+  /* once the intro has finished, swap the entrance animations for a slow side-to-side tilt on hover */
+  .intro-done .lobby-btn, .intro-done #bestFlex, .intro-done h1 { animation: none; opacity: 1; translate: 0 0; }
+  .intro-done .lobby-btn:hover, .intro-done #bestFlex:hover, .intro-done h1:hover { animation: hoverTilt 2.4s ease-in-out infinite; }
+  .intro-done .lobby-carrot:hover { animation: lobbyBob 3s ease-in-out 2.2s infinite, hoverTilt 2.4s ease-in-out infinite; }
+  @keyframes hoverTilt { 0%, 100% { rotate: 0deg; } 25% { rotate: -3deg; } 75% { rotate: 3deg; } }
   #playBtn { background: var(--accent); color: #fff; box-shadow: 0 10px 24px rgba(255, 122, 26, .35); animation-delay: 1.35s; }
   #lobbyQuests { background: #fff; color: var(--text); box-shadow: var(--shadow); animation-delay: 1.5s; }
 
@@ -1983,6 +1995,7 @@ function addEggListeners(s) {
   });
 }
 setTimeout(spawnEggCarrot, rnd(3000, 6000));   // the first chance comes a few seconds after the lobby loads
+setTimeout(() => $('lobby').classList.add('intro-done'), 2300);   // entrance animations are finished by now
 
 // pick a random easter egg you don't have yet (a cursor, a trail, or the Party Explosion) and equip it
 // there are 3 easter eggs (Alien cursor, Matrix trail, Party Explosion). New ones come first;
