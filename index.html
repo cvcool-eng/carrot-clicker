@@ -196,12 +196,55 @@
 
   /* ---------- worlds ---------- */
   #carrots { color: var(--hud, inherit); text-shadow: var(--hud-shadow, none); }
-  body.world-water  { --world-bg: radial-gradient(circle at 50% 40%, #effaff 0%, #a6dcf5 55%, #4fa9d9 100%); --hud: #0d3b57; }
-  body.world-lava   { --world-bg: radial-gradient(circle at 50% 45%, #6b200f 0%, #2e0a05 65%, #150302 100%); --hud: #fff; --hud-shadow: 0 2px 16px rgba(255,100,20,.6); }
-  body.world-jungle { --world-bg: radial-gradient(circle at 50% 40%, #f0f9e6 0%, #acdc8e 55%, #4a9437 100%); --hud: #1f3d17; }
-  body.world-candy  { --world-bg: radial-gradient(circle at 50% 40%, #fff3f9 0%, #ffc6e4 55%, #ff8cc6 100%); --hud: #6b1446; }
-  body.world-arctic { --world-bg: radial-gradient(circle at 50% 40%, #ffffff 0%, #dcf2ff 55%, #9fd0ef 100%); --hud: #0d3b57; }
+  body.world-water  { --world-bg: linear-gradient(180deg, #9fe2f7 0%, #3ea6d8 38%, #16679c 75%, #0b416b 100%); --hud: #fff; --hud-shadow: 0 2px 14px rgba(0,40,80,.55); }
+  body.world-lava   { --world-bg: radial-gradient(ellipse at 50% 120%, #ff7a1a 0%, #a8240a 25%, #3d0b04 55%, #140302 100%); --hud: #fff; --hud-shadow: 0 2px 16px rgba(255,100,20,.6); }
+  body.world-jungle { --world-bg: linear-gradient(180deg, #e2f6cf 0%, #9ad47a 45%, #4f9a3c 100%); --hud: #12350f; }
+  body.world-candy  { --world-bg: linear-gradient(180deg, #ffe6f3 0%, #ffc4e1 55%, #ffa6d2 100%); --hud: #6b1446; }
+  body.world-arctic { --world-bg: linear-gradient(180deg, #050f2a 0%, #0f2d5c 50%, #2c5f95 78%, #8fc0e4 100%); --hud: #fff; --hud-shadow: 0 2px 16px rgba(60,255,190,.45); }
   body.world-space  { --world-bg: radial-gradient(circle at 50% 40%, #1d2256 0%, #0b0d26 60%, #03040d 100%); --hud: #fff; --hud-shadow: 0 2px 16px rgba(120,140,255,.6); }
+  /* scenery: the big still/slow-moving background pieces for each world */
+  #scenery { position: fixed; inset: 0; pointer-events: none; overflow: hidden; }
+  #scenery > * { position: absolute; }
+  .sc-bottom { left: 0; bottom: 0; width: 100%; }
+  .sc-shafts {      /* sunlight shafts coming down through the water */
+    inset: 0 0 25% 0; background: repeating-linear-gradient(105deg, rgba(255,255,255,.14) 0 34px, transparent 34px 120px);
+    -webkit-mask: linear-gradient(#000, transparent); mask: linear-gradient(#000, transparent);
+    animation: shafts 9s ease-in-out infinite alternate;
+  }
+  @keyframes shafts { to { background-position: 160px 0; } }
+  .sc-weed { bottom: 34px; transform-origin: 50% 100%; animation: sway 4s ease-in-out infinite alternate; }
+  @keyframes sway { from { transform: rotate(-6deg); } to { transform: rotate(6deg); } }
+  .sc-heat {
+    left: 50%; bottom: -30vh; width: 140vw; height: 70vh; margin-left: -70vw; border-radius: 50%;
+    background: radial-gradient(closest-side, rgba(255,120,30,.5), transparent); animation: heat 3s ease-in-out infinite alternate;
+  }
+  @keyframes heat { to { opacity: .55; transform: scale(1.06); } }
+  .sc-lava { left: 0; bottom: 0; width: 200%; height: 48px; animation: waveMove 7s linear infinite; filter: drop-shadow(0 -4px 14px #ff6a00); }
+  @keyframes waveMove { to { transform: translateX(-50%); } }
+  .sc-sun { left: -15vw; top: -25vh; width: 75vw; height: 75vh; border-radius: 50%; background: radial-gradient(closest-side, rgba(255,250,200,.65), transparent); }
+  .sc-vine { top: -6px; transform-origin: 50% 0; animation: sway 5s ease-in-out infinite alternate; }
+  .sc-cloud { border-radius: 999px; background: #fff; opacity: .75; box-shadow: 30px -14px 0 4px #fff, 64px 2px 0 -2px #fff; animation: cloud linear infinite; }
+  @keyframes cloud { from { transform: translateX(-30vw); } to { transform: translateX(130vw); } }
+  .sc-lolli { width: var(--s); height: calc(var(--s) * 2.3); }
+  .sc-lolli::before {
+    content: ''; position: absolute; left: 50%; top: calc(var(--s) * .9); bottom: 0; width: 9px; margin-left: -4.5px;
+    border-radius: 5px; background: #fff; box-shadow: inset -3px 0 0 #ecd9ea;
+  }
+  .sc-lolli i {
+    position: absolute; inset: 0 0 auto 0; height: var(--s); border-radius: 50%; animation: spin 9s linear infinite;
+    background: repeating-conic-gradient(var(--c) 0 30deg, #fff 30deg 60deg); box-shadow: 0 6px 18px rgba(200,40,120,.25);
+  }
+  .sc-aurora {
+    left: -20%; width: 140%; height: 30vh; border-radius: 50%; filter: blur(26px); opacity: .7;
+    animation: aurora 10s ease-in-out infinite alternate;
+  }
+  @keyframes aurora { from { transform: translateX(-6%) skewY(-6deg) scaleY(.85); } to { transform: translateX(6%) skewY(4deg) scaleY(1.2); } }
+  .sc-nebula {
+    right: -15vw; top: -15vh; width: 75vw; height: 65vh; border-radius: 50%; filter: blur(24px);
+    background: radial-gradient(closest-side, rgba(176,90,255,.4), rgba(255,90,170,.18) 60%, transparent);
+  }
+  .sc-float { animation: floaty 9s ease-in-out infinite alternate; }
+  @keyframes floaty { to { transform: translateY(-14px) rotate(4deg); } }
   #ambient { position: fixed; inset: 0; pointer-events: none; overflow: hidden; }
   #ambient > div { position: absolute; }
   .star { width: 2px; height: 2px; border-radius: 50%; background: #fff; animation: twinkle var(--d) ease-in-out infinite; }
@@ -301,6 +344,7 @@
   .qbar { height: 8px; border-radius: 4px; background: var(--bg-soft); overflow: hidden; margin: 6px 0 3px; }
   .qbar i { display: block; height: 100%; border-radius: 4px; background: linear-gradient(90deg, #ffb347, #ff7a1a); transition: width .3s; }
   .item.qdone .qbar i { background: linear-gradient(90deg, #5fd36a, #2fb36b); }
+  .noanim .item { animation: none; }
 
   /* ---------- lobby ---------- */
   #lobby {
@@ -351,6 +395,7 @@
 </style>
 </head>
 <body>
+<div id="scenery"></div>
 <div id="ambient"></div>
 <header>
   <div id="carrots">0<small>carrots</small></div>
@@ -516,22 +561,25 @@ const CROWNED_BUNNY = hatBunnyIcon('👑');
 const HAT_BUNNY = hatBunnyIcon('🎩');
 
 // an old-school pixel-art arrow pointer (B = black outline, W = white fill)
-function pixelArrowSvg(scale = 2) {
+function pixelArrowSvg(scale = 2, [outline, fill] = ['#1d1f24', '#fff']) {
   const rows = ['B', 'BB', 'BWB', 'BWWB', 'BWWWB', 'BWWWWB', 'BWWWWWB', 'BWWWWWWB', 'BWWWWWWWB', 'BWWWWWWWWB',
     'BWWWWWBBBBB', 'BWWBWWB', 'BWB.BWWB', 'BB..BWWB', 'B....BWWB', '.....BWWB', '......BB'];
   let rects = '';
   rows.forEach((row, y) => [...row].forEach((c, x) => {
-    if (c !== '.') rects += `<rect x="${x}" y="${y}" width="1" height="1" fill="${c === 'B' ? '#1d1f24' : '#fff'}"/>`;
+    if (c !== '.') rects += `<rect x="${x}" y="${y}" width="1" height="1" fill="${c === 'B' ? outline : fill}"/>`;
   }));
   return `<svg xmlns="http://www.w3.org/2000/svg" width="${11 * scale}" height="${17 * scale}" viewBox="0 0 11 17" shape-rendering="crispEdges">${rects}</svg>`;
 }
 
-// a chunky, cartoony arrow mouse pointer in any color, as an SVG string
-function arrowSvg(color, size = 32) {
+// a chunky, cartoony arrow mouse pointer in any color (or a 2-color gradient), as an SVG string
+function arrowSvg(color, size = 32, grad = null) {
   const arrow = 'M5 3 L5 24 L10.5 19 L14.5 27.5 L19 25.5 L15 17.5 L22.5 17.5 Z';
+  const id = grad ? 'ag' + grad.join('').replace(/#/g, '') : '';
   return `<svg xmlns="http://www.w3.org/2000/svg" width="${size}" height="${size}" viewBox="0 0 32 32">` +
+    (grad ? `<defs><linearGradient id="${id}" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="${grad[0]}"/>` +
+      `<stop offset="1" stop-color="${grad[1]}"/></linearGradient></defs>` : '') +
     `<path d="${arrow}" transform="translate(1.5 1.5)" fill="rgba(0,0,0,.18)" stroke="rgba(0,0,0,.18)" stroke-width="2.6" stroke-linejoin="round"/>` +
-    `<path d="${arrow}" fill="${color}" stroke="#1d1f24" stroke-width="2.6" stroke-linejoin="round"/>` +
+    `<path d="${arrow}" fill="${grad ? `url(#${id})` : color}" stroke="#1d1f24" stroke-width="2.6" stroke-linejoin="round"/>` +
     `<path d="M7.6 8 L7.6 15" stroke="#fff" stroke-width="1.8" stroke-linecap="round" opacity=".7"/></svg>`;
 }
 
@@ -542,8 +590,17 @@ const CURSOR_SKINS = [
   { id: 'pixel',   name: 'Pixel Mouse',    cost: 3000,  pixel: true, icon: pixelArrowSvg() },
   { id: 'carrot',  name: 'Carrot',   cost: 6000,  emoji: '🥕' },
   { id: 'bunny',   name: 'Bunny',    cost: 20000,  emoji: '🐰' },
+  { id: 'goldpixel', name: 'Gold Pixel Mouse', cost: 40000, pixel: ['#7a4a00', '#ffd23f'], icon: pixelArrowSvg(2, ['#7a4a00', '#ffd23f']) },
   { id: 'crown',   name: 'Crown',    cost: 75000, emoji: '👑' },
-  { id: 'king',    name: 'King Bunny', cost: 1e9, hat: '👑', icon: CROWNED_BUNNY },
+  { id: 'gold',    name: 'Golden Pointer', cost: 150000, arrow: '#ffcc33', icon: arrowSvg('#ffcc33') },
+  { id: 'neon',    name: 'Neon Pointer',   cost: 400000, arrow: '#2ef2ff', grad: ['#2ef2ff', '#ff3dd8'], icon: arrowSvg('#2ef2ff', 32, ['#2ef2ff', '#ff3dd8']) },
+  { id: 'lolli',   name: 'Lollipop', cost: 750000, emoji: '🍭' },
+  { id: 'rocket',  name: 'Rocket',   cost: 2e6,    emoji: '🚀' },
+  { id: 'bolt',    name: 'Lightning Bolt', cost: 5e6, emoji: '⚡' },
+  { id: 'dragon',  name: 'Dragon',   cost: 2e7,    emoji: '🐉' },
+  { id: 'diamond', name: 'Diamond',  cost: 1e8,    emoji: '💎' },
+  { id: 'galaxy',  name: 'Galaxy Pointer', cost: 3e8, arrow: '#7b3fe0', grad: ['#2a2f8a', '#ff5fd1'], icon: arrowSvg('#7b3fe0', 32, ['#2a2f8a', '#ff5fd1']) },
+  { id: 'king',    name: 'King Bunny', cost: 1e9, hat: '👑', icon: CROWNED_BUNNY },   // always the most expensive
   // secret: only shows in the shop once earned by beating the game ADMIN_WINS times
   { id: 'admin',   name: 'The Admin Bunny', secret: true, hat: '🎩', icon: HAT_BUNNY },
 ];
@@ -583,16 +640,16 @@ const ADMIN_ITEMS = { cursor: 'admin', tap: 'tophats', trail: 'shadow' };
 const WORLDS = [
   { id: 'normal', name: 'Carrot Farm',  emoji: '🌾', cost: 0,       boost: 1,  desc: 'Where it all began',
     bg: 'linear-gradient(160deg, #ffffff, #e9ecf1)' },
-  { id: 'water',  name: 'Water World',  emoji: '🌊', cost: 50000,  boost: 2,  desc: 'Bubbles rise all around you',
+  { id: 'water',  name: 'Water World',  emoji: '🌊', cost: 50000,  boost: 2,  desc: 'Deep under the sea, with fish and seaweed',
     bg: 'linear-gradient(160deg, #e9f8ff, #4fa9d9)' },
-  { id: 'lava',   name: 'Lava World',   emoji: '🌋', cost: 200000, boost: 3,  desc: 'Hot embers float up from below',
+  { id: 'lava',   name: 'Lava World',   emoji: '🌋', cost: 200000, boost: 3,  desc: 'A volcano over a bubbling lava lake',
     bg: 'linear-gradient(160deg, #ff8a3c, #4a1208)' },
-  { id: 'jungle', name: 'Jungle World', emoji: '🌴', cost: 1e6,    boost: 5,  desc: 'Leaves drift down from the trees',
+  { id: 'jungle', name: 'Jungle World', emoji: '🌴', cost: 1e6,    boost: 5,  desc: 'Hanging vines, thick bushes and falling leaves',
     bg: 'linear-gradient(160deg, #eaf7df, #4a9437)' },
-  { id: 'candy',  name: 'Candy World',  emoji: '🍭', cost: 1e7,    boost: 8,  desc: 'Sprinkles rain down from the sky',
+  { id: 'candy',  name: 'Candy World',  emoji: '🍭', cost: 1e7,    boost: 8,  desc: 'Lollipops, candy hills and raining sprinkles',
     bg: 'linear-gradient(160deg, #fff0f7, #ff8cc6)' },
-  { id: 'arctic', name: 'Arctic World', emoji: '🏔️', cost: 1e8,    boost: 12, desc: 'Snow falls softly all around',
-    bg: 'linear-gradient(160deg, #ffffff, #8fc8ea)' },
+  { id: 'arctic', name: 'Arctic World', emoji: '🏔️', cost: 1e8,    boost: 12, desc: 'Snowy peaks under the northern lights',
+    bg: 'linear-gradient(160deg, #0f2d5c, #3dffb5)' },
   { id: 'space',  name: 'Space World',  emoji: '🚀', cost: 1e9,    boost: 20, desc: 'The final world. Reach 10B carrots here to finish the game. No golden carrots up here!',
     bg: 'linear-gradient(160deg, #2a2f6a, #04050f)' },
 ];
@@ -1073,8 +1130,8 @@ function applyCursorSkin() {
   const s = CURSOR_SKINS.find(k => k.id === state.cursorSkin) || CURSOR_SKINS[0];
   const html = document.documentElement;
   const cursor = s.emoji ? emojiCursor(s.emoji)
-    : s.arrow ? `url("data:image/svg+xml,${encodeURIComponent(arrowSvg(s.arrow))}") 5 3, pointer`
-    : s.pixel ? `url("data:image/svg+xml,${encodeURIComponent(pixelArrowSvg())}") 1 1, pointer`
+    : s.arrow ? `url("data:image/svg+xml,${encodeURIComponent(arrowSvg(s.arrow, 32, s.grad))}") 5 3, pointer`
+    : s.pixel ? `url("data:image/svg+xml,${encodeURIComponent(pixelArrowSvg(2, s.pixel === true ? undefined : s.pixel))}") 1 1, pointer`
     : s.hat ? hatBunnyCursor(s.hat) : null;
   html.classList.toggle('custom-cursor', !!cursor);
   if (cursor) html.style.setProperty('--cursor', cursor);
@@ -1152,7 +1209,111 @@ function applyWorld() {
   for (const x of WORLDS) document.body.classList.toggle('world-' + x.id, x.id === w.id);
   $('worldChip').firstChild.textContent = w.emoji + ' ';
   $('worldName').textContent = w.name + (w.boost > 1 ? ` · ${w.boost}x` : '');
+  $('scenery').innerHTML = SCENERY[w.id] ? SCENERY[w.id]() : '';
   startAmbient(w.id);
+}
+
+// ---------- world scenery ----------
+const svgEl = (cls, style, viewBox, inner, fit = 'none') =>
+  `<svg class="${cls}" style="${style}" viewBox="${viewBox}" preserveAspectRatio="${fit}" aria-hidden="true">${inner}</svg>`;
+const snowCap = (x, y) => `<path d="M${x} ${y} L${x - 26} ${y + 24} L${x - 12} ${y + 18} L${x} ${y + 28} L${x + 12} ${y + 18} L${x + 26} ${y + 24}Z" fill="#fff"/>`;
+const SCENERY = {
+  normal: () =>   // soft rolling farm hills
+    svgEl('sc-bottom', 'height:22vh', '0 0 1000 200',
+      '<path d="M0 200 V120 Q250 60 500 115 T1000 100 V200Z" fill="#e3f4d6"/>' +
+      '<path d="M0 200 V160 Q300 120 600 158 T1000 150 V200Z" fill="#d2edc0"/>'),
+
+  water: () => {   // underwater: light shafts, swaying seaweed, sandy floor
+    const weeds = [[3, 170, '#2e8b57', 0], [8, 120, '#3fa66a', .8], [14, 210, '#26774a', 1.6],
+                   [79, 150, '#3fa66a', .4], [86, 220, '#2e8b57', 1.2], [93, 130, '#26774a', 2]]
+      .map(([l, h, c, d]) => svgEl('sc-weed', `left:${l}%;height:${h}px;width:${h * .25}px;animation-delay:-${d}s`, '0 0 40 180',
+        `<path d="M20 180 C 4 140, 36 112, 18 74 S 32 24, 22 0" stroke="${c}" stroke-width="9" fill="none" stroke-linecap="round"/>`,
+        'xMidYMax meet')).join('');
+    return '<div class="sc-shafts"></div>' + weeds + svgEl('sc-bottom', 'height:60px', '0 0 1000 100',
+      '<path d="M0 40 C 150 15, 300 60, 500 38 S 850 15, 1000 42 V100 H0Z" fill="#e8d394"/>' +
+      '<path d="M0 70 C 200 55, 400 85, 600 68 S 900 55, 1000 72 V100 H0Z" fill="#d6bb78"/>');
+  },
+
+  lava: () => {   // glowing heat, a volcano with lava running down, and a bubbling lava lake
+    let wave = 'M0 18 Q 125 0 250 18';
+    for (let x = 500; x <= 2000; x += 250) wave += ` T ${x} 18`;
+    return '<div class="sc-heat"></div>' + svgEl('sc-bottom', 'height:44vh', '0 0 1000 300',
+      '<path d="M0 300 V235 L230 205 L415 72 L465 62 L535 62 L585 72 L770 205 L1000 235 V300Z" fill="#2b0803"/>' +
+      '<path d="M466 62 L534 62 L524 92 L506 150 L496 100 Z" fill="#ff7a1a"/>' +
+      '<path d="M500 64 L512 120 L503 178 L497 120Z" fill="#ffb347" opacity=".85"/>' +
+      '<ellipse cx="500" cy="62" rx="36" ry="7" fill="#ffd166"/>' +
+      '<path d="M0 300 V262 L160 250 L300 270 L420 248 L560 262 L700 245 L860 262 L1000 252 V300Z" fill="#1c0502"/>', 'xMidYMax slice') +
+      svgEl('sc-lava', '', '0 0 2000 60',
+        `<path d="${wave} V60 H0Z" fill="#ff6a10"/><path d="${wave} V60 H0Z" fill="#ffb347" transform="translate(0 14)" opacity=".7"/>`);
+  },
+
+  jungle: () => {   // sunlight, hanging vines with leaves, layered bushes
+    const vines = [[4, 190], [13, 120], [23, 230], [71, 150], [81, 240], [91, 130]].map(([l, h], i) => {
+      let leaves = '';
+      for (let k = 0, y = 26; y < h - 6; k++, y += 30) {
+        const x = k % 2 ? 29 : 11;
+        leaves += `<ellipse cx="${x}" cy="${y}" rx="11" ry="6" fill="${k % 3 ? '#3f9a3a' : '#57b84d'}" transform="rotate(${k % 2 ? 30 : -30} ${x} ${y})"/>`;
+      }
+      return svgEl('sc-vine', `left:${l}%;height:${h}px;width:40px;animation-delay:-${i * .7}s`, `0 0 40 ${h}`,
+        `<path d="M20 0 C 10 ${h * .3}, 30 ${h * .6}, 20 ${h}" stroke="#2f6b2a" stroke-width="4" fill="none"/>${leaves}`, 'xMidYMin meet');
+    }).join('');
+    return '<div class="sc-sun"></div>' + vines + svgEl('sc-bottom', 'height:26vh', '0 0 1000 200',
+      '<path d="M0 200 V120 Q60 60 130 110 Q190 50 260 105 Q330 45 400 100 Q470 55 540 108 Q610 50 680 102 Q750 48 820 106 Q890 55 960 100 Q990 85 1000 95 V200Z" fill="#3d8b35"/>' +
+      '<path d="M0 200 V150 Q80 100 160 145 Q240 95 320 148 Q400 100 480 150 Q560 105 640 148 Q720 98 800 146 Q880 104 1000 140 V200Z" fill="#2a6b25"/>');
+  },
+
+  candy: () => {   // drifting cotton-candy clouds, giant lollipops, pastel candy hills
+    const clouds = [[12, 60, 34, 0], [28, 90, 46, 14], [8, 48, 40, 27]]
+      .map(([top, w, dur, delay]) => `<div class="sc-cloud" style="top:${top}%;width:${w}px;height:${w * .45}px;animation-duration:${dur}s;animation-delay:-${delay}s"></div>`).join('');
+    return clouds +
+      '<div class="sc-lolli sc-float" style="left:5%;bottom:14vh;--s:84px;--c:#ff5fa2"><i></i></div>' +
+      '<div class="sc-lolli sc-float" style="right:17%;bottom:18vh;--s:64px;--c:#8a6bff;animation-delay:-4s"><i></i></div>' +
+      svgEl('sc-bottom', 'height:24vh', '0 0 1000 200',
+        '<path d="M0 200 V110 Q120 40 250 105 Q380 50 520 110 Q660 45 800 105 Q900 70 1000 100 V200Z" fill="#e3c8ff"/>' +
+        '<path d="M0 200 V150 Q150 100 300 148 Q450 105 600 150 Q760 100 1000 145 V200Z" fill="#bff3dc"/>' +
+        '<path d="M0 200 V178 Q250 160 500 180 T1000 172 V200Z" fill="#fff6fb"/>');
+  },
+
+  arctic: () => {   // night sky with stars, northern lights, snowy mountains
+    let stars = '';
+    for (let i = 0; i < 45; i++) {
+      stars += `<div class="star" style="left:${rnd(0, 100)}%;top:${rnd(0, 45)}%;--d:${rnd(2, 5)}s;animation-delay:-${rnd(0, 5)}s"></div>`;
+    }
+    return stars +
+      '<div class="sc-aurora" style="top:4vh;background:linear-gradient(90deg, transparent, #3dffb5 25%, #2ad4ff 55%, #b07bff 80%, transparent)"></div>' +
+      '<div class="sc-aurora" style="top:15vh;height:20vh;opacity:.5;animation-duration:13s;animation-delay:-4s;background:linear-gradient(90deg, transparent, #2ad4ff 30%, #3dffb5 60%, transparent)"></div>' +
+      svgEl('sc-bottom', 'height:36vh', '0 0 1000 260',
+        '<path d="M0 260 V170 L90 110 L170 150 L280 60 L380 140 L470 90 L560 150 L650 70 L760 140 L860 100 L1000 160 V260Z" fill="#6f9cc7"/>' +
+        snowCap(90, 110) + snowCap(280, 60) + snowCap(470, 90) + snowCap(650, 70) + snowCap(860, 100) +
+        '<path d="M0 260 V215 Q150 180 300 210 T600 205 T1000 200 V260Z" fill="#dceefa"/>' +
+        '<path d="M0 260 V235 Q250 220 500 238 T1000 232 V260Z" fill="#fff"/>');
+  },
+
+  space: () =>   // purple nebula, a ringed planet and a little moon
+    '<div class="sc-nebula"></div>' +
+    svgEl('sc-float', 'left:4%;bottom:9%;width:180px;height:126px', '0 0 170 120',
+      '<defs><radialGradient id="planetGrad" cx="35%" cy="35%"><stop offset="0" stop-color="#ffb3d1"/><stop offset="1" stop-color="#7b3fe0"/></radialGradient></defs>' +
+      '<ellipse cx="85" cy="60" rx="80" ry="16" fill="none" stroke="#d8c3ff" stroke-width="5" opacity=".6"/>' +
+      '<circle cx="85" cy="60" r="42" fill="url(#planetGrad)"/>' +
+      '<path d="M5 60 A 80 16 0 0 0 165 60" fill="none" stroke="#e6d9ff" stroke-width="5"/>', 'xMidYMid meet') +
+    svgEl('sc-float', 'right:8%;top:16%;width:54px;height:54px;animation-delay:-3s', '0 0 50 50',
+      '<circle cx="25" cy="25" r="22" fill="#cfcbe8"/><circle cx="17" cy="18" r="5" fill="#b3aed6"/>' +
+      '<circle cx="31" cy="30" r="7" fill="#b3aed6"/><circle cx="30" cy="14" r="3" fill="#b3aed6"/>', 'xMidYMid meet'),
+};
+
+// a fish silhouette swimming across Water World now and then
+function swimFish() {
+  const dir = Math.random() < .5 ? 1 : -1, s = rnd(.7, 1.3);
+  const el = ambientPiece(`top:${rnd(18, 72)}%;left:0;width:46px;height:24px;opacity:.5`);
+  el.innerHTML = '<svg viewBox="0 0 46 24" width="46" height="24"><ellipse cx="18" cy="12" rx="16" ry="9" fill="#0b3f63"/>' +
+    '<path d="M32 12 L46 2 L46 22 Z" fill="#0b3f63"/><circle cx="9" cy="10" r="2" fill="#bfe9ff"/></svg>';
+  const from = dir > 0 ? -60 : innerWidth + 60, to = dir > 0 ? innerWidth + 60 : -60;
+  const flip = dir > 0 ? -s : s;   // the fish faces left, so flip it when swimming right
+  el.animate([
+    { transform: `translate(${from}px, 0) scale(${flip}, ${s})` },
+    { transform: `translate(${(from + to) / 2}px, ${rnd(-30, 30)}px) scale(${flip}, ${s})` },
+    { transform: `translate(${to}px, 0) scale(${flip}, ${s})` },
+  ], { duration: rnd(11000, 17000), easing: 'ease-in-out' }).onfinish = () => el.remove();
 }
 
 // background effects for each world
@@ -1173,7 +1334,8 @@ function rise(css, size, dur, wobble) {
   ], { duration: dur, easing: 'linear' }).onfinish = () => el.remove();
 }
 const AMBIENT = {
-  water: () => rise('border:2px solid rgba(255,255,255,.8);background:rgba(255,255,255,.18);border-radius:50%', rnd(6, 20), rnd(6000, 10000), 30),
+  water: () => Math.random() < .05 ? swimFish()
+    : rise('border:2px solid rgba(255,255,255,.8);background:rgba(255,255,255,.18);border-radius:50%', rnd(6, 20), rnd(6000, 10000), 30),
   lava: () => {
     const c = ['#ffd166', '#ff9a3c', '#ff5a1a'][Math.random() * 3 | 0];
     rise(`background:${c};border-radius:50%;box-shadow:0 0 10px 2px ${c}`, rnd(3, 7), rnd(4000, 7000), 40);
@@ -1531,14 +1693,22 @@ function questAdd(stat, n) { state.questStats[stat] = (state.questStats[stat] ||
 const questProgress = q => Math.min(state.questStats[q.stat] || 0, q.goal);
 const claimable = () => todaysQuests.filter(q => questProgress(q) >= q.goal && !state.questClaimed.includes(q.id)).length;
 
-function renderQuests() {
+// which quests are in progress / done / claimed; the list only needs rebuilding when this changes
+const questKey = () => todaysQuests.day + todaysQuests.map(q =>
+  state.questClaimed.includes(q.id) ? 'c' : questProgress(q) >= q.goal ? 'd' : 'p').join('');
+let questRenderedKey = '';
+
+// animate = false rebuilds without the slide-in animation (so it doesn't look like it's refreshing)
+function renderQuests(animate = true) {
+  questRenderedKey = questKey();
+  $('questList').classList.toggle('noanim', !animate);
   $('questList').innerHTML = todaysQuests.map((q, i) => {
     const p = questProgress(q), done = p >= q.goal, claimed = state.questClaimed.includes(q.id);
     const btn = claimed ? '<button class="buy done" disabled>Claimed ✓</button>'
       : done ? `<button class="buy" data-claim="${q.id}">Claim<br>🥕 ${fmt(q.reward)}</button>`
       : `<button class="buy" disabled>🥕 ${fmt(q.reward)}</button>`;
     return itemHTML({ i, ico: q.icon, name: q.text, btn, equipped: done && !claimed,
-      desc: `<div class="qbar"><i style="width:${p / q.goal * 100}%"></i></div>${fmt(p)} / ${fmt(q.goal)}` })
+      desc: `<div class="qbar"><i style="width:${p / q.goal * 100}%"></i></div><span class="qtext">${fmt(p)} / ${fmt(q.goal)}</span>` })
       .replace('class="item', `class="item${done ? ' qdone' : ''}`);
   }).join('');
 }
@@ -1548,7 +1718,18 @@ function updateQuestUI() {
   for (const b of [$('qBadge'), $('lobbyQBadge')]) { b.hidden = !n; b.textContent = n; }
   const ms = nextReset() - Date.now();
   $('questTimer').textContent = `New quests in ${Math.floor(ms / 3600e3)}h ${Math.floor(ms / 60e3) % 60}m (every day at 6:00 AM)`;
-  if (document.body.classList.contains('quests-open')) renderQuests();
+  if (document.body.classList.contains('quests-open')) updateQuestRows();
+}
+// every second while the panel is open: just slide the progress bars and update the numbers in place
+function updateQuestRows() {
+  if (questKey() !== questRenderedKey) return renderQuests(false);
+  todaysQuests.forEach((q, i) => {
+    const row = $('questList').children[i];
+    if (!row) return;
+    const p = questProgress(q);
+    row.querySelector('.qbar i').style.width = p / q.goal * 100 + '%';
+    row.querySelector('.qtext').textContent = `${fmt(p)} / ${fmt(q.goal)}`;
+  });
 }
 const openQuests = () => { closeShop(); closePortal(); updateQuestUI(); renderQuests(); document.body.classList.add('quests-open'); };
 const closeQuests = () => document.body.classList.remove('quests-open');
@@ -1566,8 +1747,7 @@ $('questList').addEventListener('click', e => {
   burst(r.left + r.width / 2, r.top + r.height / 2);
   toast(`📋 Quest complete! +${fmt(q.reward)} carrots`);
   save();
-  updateQuestUI();
-  renderQuests();
+  updateQuestUI();   // redraws the list (without replaying the slide-in) since this quest is now claimed
   render();
 });
 
