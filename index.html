@@ -66,6 +66,7 @@
     filter: sepia(1) saturate(5) hue-rotate(-8deg) brightness(1.2) drop-shadow(0 0 14px #ffd23f);
   }
   .fx { position: fixed; pointer-events: none; z-index: 25; line-height: 1; }
+  body.in-lobby .fx { z-index: 85; }   /* explosions from tapping the lobby carrot show above the lobby */
   .trail { position: fixed; pointer-events: none; z-index: 40; line-height: 1; }
 
   /* ---------- shop ---------- */
@@ -1007,9 +1008,9 @@ function galaxy(x, y) {
   flash(x, y, 'rgba(180,140,255,.8)', 60);
 }
 
-function tapEffect(x, y) {
+function tapEffect(x, y, effect = state.tapSkin) {   // effect: which tap effect to play (default: the equipped one)
   const orange = getComputedStyle(document.documentElement).getPropertyValue('--b2');
-  switch (state.tapSkin) {
+  switch (effect) {
     case 'stars':
       fling(x, y, { n: 6, make: () => emo('⭐', 20), dist: [50, 90], spin: 360, even: true });
       break;
@@ -1997,6 +1998,22 @@ function addEggListeners(s) {
 setTimeout(spawnEggCarrot, rnd(3000, 6000));   // the first chance comes a few seconds after the lobby loads
 setTimeout(() => $('lobby').classList.add('intro-done'), 2300);   // entrance animations are finished by now
 
+// tap the lobby carrot: a different explosion every time (goes through all of them in a shuffled order)
+document.body.classList.add('in-lobby');   // lets effects draw on top of the lobby
+let lobbyFxBag = [];
+$('lobbyBg').parentElement.querySelector('.lobby-carrot').addEventListener('pointerdown', e => {
+  if (e.button !== 0) return;
+  if (!lobbyFxBag.length) {
+    const last = lobbyFxBag.last;
+    lobbyFxBag = TAPS.map(t => t.id).sort(() => Math.random() - .5);
+    if (lobbyFxBag[0] === last) lobbyFxBag.push(lobbyFxBag.shift());   // no repeat across reshuffles
+  }
+  const effect = lobbyFxBag.shift();
+  lobbyFxBag.last = effect;
+  tapEffect(e.clientX, e.clientY, effect);
+  e.currentTarget.animate([{ scale: 1.25, offset: .4 }], { duration: 260, easing: 'ease-out' });   // a little bounce from its current size
+});
+
 // pick a random easter egg you don't have yet (a cursor, a trail, or the Party Explosion) and equip it
 // there are 3 easter eggs (Alien cursor, Matrix trail, Party Explosion). New ones come first;
 // once you have all 3, more green carrots just give you one of them again.
@@ -2016,6 +2033,7 @@ function giveEgg() {
 }
 onPress($('playBtn'), () => {
   lobbyOpen = false;
+  document.body.classList.remove('in-lobby');
   $('lobby').classList.add('hide');
   last = performance.now();
   // once it has faded out, remove it completely so its animations stop using the graphics card
