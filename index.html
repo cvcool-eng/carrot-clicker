@@ -834,7 +834,7 @@ const UPGRADES = [
     cost: n => Math.round(100000 * 1.3 ** n), toast: '🚜 Tractor bought!' },
   { key: 'golden', ico: '✨', name: 'Golden Soil', tag: n => `Lv ${n}`, max: 3,
     desc: n => n < 3 ? `Next: golden carrots ${SOIL_PERKS[n + 1]}` : `Golden carrots ${SOIL_PERKS[3]}`,
-    cost: n => Math.round(20000 * 5 ** n), toast: '✨ Golden Soil upgraded! Here comes one now!',
+    cost: n => Math.round(15000 * 4 ** n), toast: '✨ Golden Soil upgraded! Here comes one now!',
     // show it off right away: a golden carrot flies in and the timer restarts at the new speed
     after: () => { clearTimeout(goldenTimer); spawnGolden(); applySoil(); } },
   { key: 'cellar', ico: '🏚️', name: 'Carrot Cellar', max: 1,
@@ -2094,10 +2094,10 @@ setInterval(() => {
 
 // ---------- golden carrots: random bonus that pops up somewhere on screen ----------
 // Golden Soil levels: how much more often golden carrots come, and how much they're worth
-const SOIL_PERKS = ['', '2.5x as often · worth 1.5x', '4x as often · worth 2x · fly slower',
-  '5.5x as often · worth 2.5x · fly slower · sometimes come in pairs'];
+const SOIL_PERKS = ['', '2.5x as often · worth 2x', '4x as often · worth 3x · fly slower',
+  '5.5x as often · worth 4x · fly slower · sometimes come in pairs'];
 const soilFreq = () => 1 + state.golden * 1.5;
-const soilWorth = () => 1 + state.golden * .5;
+const soilWorth = () => 1 + state.golden;   // 2x, 3x, 4x
 const GOLDEN_REWARD = 500;   // carrots per golden carrot, before Golden Soil
 
 let goldenTimer;
