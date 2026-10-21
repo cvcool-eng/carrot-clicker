@@ -363,8 +363,20 @@
   }
   #lobby.hide { opacity: 0; transform: scale(1.08); pointer-events: none; }
   #lobbyBg { position: absolute; inset: 0; overflow: hidden; }
-  #lobbyBg span { position: absolute; top: 0; font-size: 26px; opacity: .22; animation: lobbyFloat linear infinite; }
+  #lobbyBg span { position: absolute; top: 0; font-size: 26px; opacity: .5; animation: lobbyFloat linear infinite; pointer-events: none; }
+  /* easter egg carrots: green, glowing and flashing, and tappable */
+  #lobbyBg span.egg {
+    opacity: 1; font-size: 38px; cursor: pointer; pointer-events: auto; padding: 8px;
+    animation: lobbyFloat linear forwards, eggFlash .45s ease-in-out infinite alternate;
+  }
+  @keyframes eggFlash {
+    from { filter: hue-rotate(75deg) saturate(1.8) brightness(1) drop-shadow(0 0 4px #3dff6a); }
+    to   { filter: hue-rotate(75deg) saturate(2.4) brightness(1.5) drop-shadow(0 0 16px #3dff6a); }
+  }
   @keyframes lobbyFloat { from { transform: translateY(110vh) rotate(0deg); } to { transform: translateY(-15vh) rotate(360deg); } }
+  /* the column itself lets taps through to the green carrots behind it; only its buttons catch taps */
+  .lobby-inner { pointer-events: none; }
+  .lobby-inner .lobby-btn { pointer-events: auto; }
   .lobby-inner { position: relative; display: flex; flex-direction: column; align-items: center; gap: min(12px, 1.8vh); padding: 16px; text-align: center; }
   /* sizes shrink with the screen height so Play and Quests always fit, even in a short browser window */
   .lobby-carrot { width: min(150px, 18vh); height: min(195px, 24vh); overflow: visible; animation: lobbyBob 3s ease-in-out 2.2s infinite; }
@@ -617,6 +629,12 @@ const CURSOR_SKINS = [
   { id: 'king',    name: 'King Bunny', cost: 1e9, hat: '👑', icon: CROWNED_BUNNY },   // always the most expensive
   // secret: only shows in the shop once earned by beating the game ADMIN_WINS times
   { id: 'admin',   name: 'The Admin Bunny', secret: true, hat: '🎩', icon: HAT_BUNNY },
+  // easter eggs: only from the flashing green carrots in the lobby, and only until you restart
+  { id: 'egg_alien', name: 'Alien',       egg: true, emoji: '👽' },
+  { id: 'egg_dino',  name: 'Dino',        egg: true, emoji: '🦖' },
+  { id: 'egg_frog',  name: 'Frog',        egg: true, emoji: '🐸' },
+  { id: 'egg_pizza', name: 'Pizza',       egg: true, emoji: '🍕' },
+  { id: 'egg_egg',   name: 'Easter Egg',  egg: true, emoji: '🥚' },
 ];
 
 // shop icon for a line trail: a short slanted streak, fading in from the tail
@@ -657,6 +675,13 @@ const TRAILS = [
     line: { life: 420, width: 7, color: f => `hsl(${235 + 45 * f} 100% ${58 + 14 * f}%)`, glow: '#8a4dff', blur: 18 } },
   { id: 'sunset',  name: 'Sunset',       cost: 650000, icon: lineIcon('#ffb347', '#ff4fa3'),
     line: { life: 420, width: 7, color: f => `hsl(${330 + 60 * f} 100% 62%)`, glow: '#ff7a5a', blur: 16 } },
+  // easter egg trails (lobby green carrots only)
+  { id: 'egg_glitch', name: 'Glitch',    egg: true, icon: lineIcon('#ff3dd8', '#2ef2ff'),
+    line: { life: 260, width: 5, color: f => Math.floor(f * 12) % 2 ? '#ff3dd8' : '#2ef2ff', glow: '#ff3dd8', blur: 8, jitter: 9 } },
+  { id: 'egg_matrix', name: 'Matrix',    egg: true, icon: lineIcon('#7dff9a', '#0a8a3a'),
+    line: { life: 380, width: 4, color: f => `hsl(135 100% ${28 + 42 * f}%)`, glow: '#3dff6a', blur: 12, jitter: 3 } },
+  { id: 'egg_gum',    name: 'Bubblegum', egg: true, icon: lineIcon('#ff9ad5'),
+    line: { life: 420, width: 12, color: () => '#ff9ad5', glow: '#ff6fc4', blur: 10 } },
   { id: 'shadow',  name: 'Admin Shadow', secret: true, icon: lineIcon('#000', '#555'),
     line: { life: 250, width: 4.5, color: () => '#000' } },
 ];
@@ -671,6 +696,7 @@ const TAPS = [
   { id: 'lightning',name: 'Lightning',        cost: 250000, icon: '⚡' },
   { id: 'galaxy',   name: 'Galaxy Swirl',     cost: 750000, icon: '🌌' },
   { id: 'tophats',  name: 'Admin Top Hats',   secret: true, icon: '🎩' },
+  { id: 'egg_party', name: 'Party Explosion', egg: true,    icon: '🎉' },   // easter egg
 ];
 
 // everything The Admin Bunny unlocks, and how many wins it takes
@@ -725,7 +751,19 @@ function grantAdmin(equip) {
     if (equip[kind]) state[kind + 'Skin'] = id;
   }
 }
-const save = () => { state.lastSeen = Date.now(); try { localStorage.setItem(SAVE_KEY, JSON.stringify(state)); } catch {} };
+// easter egg items are never saved: they only last until the page is reloaded or the game restarts
+const EGG_KINDS = { cursor: CURSOR_SKINS, trail: TRAILS, tap: TAPS };
+const isEgg = (kind, id) => EGG_KINDS[kind].some(s => s.id === id && s.egg);
+let eggPrev = {};   // what you had equipped before an easter egg replaced it, so the save puts that back
+const save = () => {
+  state.lastSeen = Date.now();
+  const s = JSON.parse(JSON.stringify(state));
+  for (const kind of Object.keys(EGG_KINDS)) {
+    s[kind + 'Skins'] = s[kind + 'Skins'].filter(id => !isEgg(kind, id));
+    if (isEgg(kind, s[kind + 'Skin'])) s[kind + 'Skin'] = eggPrev[kind] || fresh()[kind + 'Skin'];
+  }
+  try { localStorage.setItem(SAVE_KEY, JSON.stringify(s)); } catch {}
+};
 
 const $ = id => document.getElementById(id);
 let lobbyOpen = true;   // the start screen shows on every visit until Play is pressed
@@ -963,6 +1001,17 @@ function tapEffect(x, y) {
     case 'galaxy':
       galaxy(x, y);
       break;
+    case 'egg_party': {   // confetti + party poppers
+      const confetti = i => {
+        const d = document.createElement('div');
+        d.style.cssText = `width:7px;height:12px;border-radius:2px;background:${['#ff5fa2', '#ffd23f', '#5fd3ff', '#7cf08a', '#b07bff', '#ff8a2b'][i % 6]}`;
+        return d;
+      };
+      flash(x, y, 'rgba(255,255,255,.9)', 50);
+      fling(x, y, { n: 22, make: confetti, dist: [60, 140], dur: 1000, gravity: 110, spin: 720 });
+      fling(x, y, { n: 4, make: i => emo(['🎉', '🎊', '🥳', '🎉'][i], 24), dist: [50, 90], dur: 900, gravity: 60, spin: 200, even: true });
+      break;
+    }
     case 'tophats':
       fling(x, y, { n: 7, make: () => emo('🎩', 26), dist: [60, 115], dur: 950, gravity: 110, spin: 300 });
       break;
@@ -1216,7 +1265,7 @@ function skinRow(s, i, kind) {
   const btn = equipped ? '<button class="buy done" disabled>Equipped</button>'
     : owned ? `<button class="buy ghost" data-action="equip-${kind}:${s.id}">Equip</button>`
     : buyBtn(`skin-${kind}:${s.id}`, s.cost);
-  let desc = s.secret ? `🏆 Earned by beating the game ${ADMIN_WINS} times` : s.cost ? (owned ? 'Owned' : SKIN_LABEL[kind]) : 'Free';
+  let desc = s.egg ? '🥚 Easter egg · yours until you restart' : s.secret ? `🏆 Earned by beating the game ${ADMIN_WINS} times` : s.cost ? (owned ? 'Owned' : SKIN_LABEL[kind]) : 'Free';
   if (s.boost) desc = `<b style="color:var(--accent)">${s.boost}x carrots per click</b> · ${desc}`;
   return itemHTML({ ico, name: s.name, desc, btn, equipped, i });
 }
@@ -1235,7 +1284,7 @@ function renderShop(animate = true) {
     }).join('');
   } else {
     const [kind, list] = SKIN_TABS[tab];
-    html = list.filter(s => !s.secret || state[kind + 'Skins'].includes(s.id)).map((s, i) => skinRow(s, i, kind)).join('');
+    html = list.filter(s => !(s.secret || s.egg) || state[kind + 'Skins'].includes(s.id)).map((s, i) => skinRow(s, i, kind)).join('');
   }
   const modBtn = state.modded
     ? '<button class="mod-btn normal" id="modBtn">↩️ Back to normal mode</button>'
@@ -1588,7 +1637,8 @@ $('endModal').addEventListener('click', e => {
 });
 
 function resetGame() {
-  state = fresh();
+  state = fresh();   // fresh() has none of the easter egg items, so restarting removes them
+  eggPrev = {};
   $('goldTint').classList.remove('on');
   document.querySelectorAll('.golden').forEach(g => g.remove());
   clearTimeout(goldenTimer);
@@ -1613,7 +1663,7 @@ function enterModded() {
   state.carrots = 1e9;
   for (const u of UPGRADES) state[u.key] = u.max || Math.max(state[u.key], 10);
   for (const [kind, list] of Object.values(SKIN_TABS)) {
-    state[kind + 'Skins'] = list.filter(s => !s.secret || state[kind + 'Skins'].includes(s.id)).map(s => s.id);
+    state[kind + 'Skins'] = list.filter(s => !(s.secret || s.egg) || state[kind + 'Skins'].includes(s.id)).map(s => s.id);
   }
   state.worldsUnlocked = WORLDS.map(w => w.id);
   refreshAll();
@@ -1825,6 +1875,44 @@ for (let i = 0; i < 12; i++) {
   s.textContent = '🥕';
   s.style.cssText = `left:${rnd(0, 96)}%;animation-duration:${rnd(9, 16)}s;animation-delay:-${rnd(0, 16)}s;font-size:${rnd(18, 34)}px`;
   $('lobbyBg').appendChild(s);
+}
+
+// ---------- easter eggs: flashing green carrots float up the lobby; tap one for a secret item ----------
+const EGG_LABEL = { cursor: 'cursor', trail: 'trail', tap: 'tap effect' };
+function spawnEggCarrot() {
+  if (!lobbyOpen || document.hidden) return;
+  const s = document.createElement('span');
+  s.className = 'egg';
+  s.textContent = '🥕';
+  s.style.cssText = `left:${rnd(4, 88)}%;animation-duration:${rnd(7, 10)}s, .45s`;
+  s.addEventListener('animationend', e => { if (e.animationName === 'lobbyFloat') s.remove(); });
+  s.addEventListener('pointerdown', e => {
+    if (e.button !== 0) return;
+    e.stopPropagation();
+    const r = s.getBoundingClientRect();
+    s.remove();
+    const sparkle = () => { const d = dot('#3dff6a', 7); d.style.zIndex = 80; return d; };   // above the lobby
+    fling(r.left + r.width / 2, r.top + r.height / 2, { n: 10, make: sparkle, dist: [30, 70], dur: 600 });
+    giveEgg();
+  });
+  $('lobbyBg').appendChild(s);
+}
+setInterval(spawnEggCarrot, 3500);
+setTimeout(spawnEggCarrot, 1800);   // the first one shows up soon after the lobby loads
+
+// pick a random easter egg you don't have yet (a cursor, a trail, or the Party Explosion) and equip it
+function giveEgg() {
+  const options = Object.entries(EGG_KINDS).map(([kind, list]) =>
+    [kind, list.filter(s => s.egg && !state[kind + 'Skins'].includes(s.id))]).filter(([, l]) => l.length);
+  if (!options.length) return toast('🥚 You found every easter egg! Restart the game to hunt for them again.');
+  const [kind, list] = options[Math.random() * options.length | 0];
+  const item = list[Math.random() * list.length | 0];
+  if (!isEgg(kind, state[kind + 'Skin'])) eggPrev[kind] = state[kind + 'Skin'];
+  state[kind + 'Skins'].push(item.id);
+  state[kind + 'Skin'] = item.id;
+  if (kind === 'cursor') applyCursorSkin();
+  toast(`🥚 Easter egg! ${item.emoji || item.icon.length < 5 && item.icon || ''} ${item.name} ${EGG_LABEL[kind]}, equipped until you restart`);
+  renderShop();
 }
 $('playBtn').addEventListener('click', () => {
   lobbyOpen = false;
