@@ -340,10 +340,10 @@ const CARROT_SKINS = [
 ];
 
 // a bunny wearing a little hat, for shop icons
-const hatBunnyIcon = (hat, top) => '<span style="position:relative;display:inline-block;line-height:1">🐰' +
-  `<span style="position:absolute;left:50%;top:${top}em;transform:translateX(-50%) rotate(-12deg);font-size:.55em">${hat}</span></span>`;
-const CROWNED_BUNNY = hatBunnyIcon('👑', -.42);
-const HAT_BUNNY = hatBunnyIcon('🎩', -.18);   // top hat sits right on the head
+const hatBunnyIcon = hat => '<span style="position:relative;display:inline-block;line-height:1">🐰' +
+  `<span style="position:absolute;left:50%;top:-.18em;transform:translateX(-50%) rotate(-12deg);font-size:.55em">${hat}</span></span>`;
+const CROWNED_BUNNY = hatBunnyIcon('👑');
+const HAT_BUNNY = hatBunnyIcon('🎩');
 
 // an old-school pixel-art arrow pointer (B = black outline, W = white fill)
 function pixelArrowSvg(scale = 2) {
@@ -692,7 +692,7 @@ function hatBunnyCursor(hat) {
   x.textAlign = 'center';
   x.textBaseline = 'middle';
   x.fillText('🐰', 22, 30);
-  x.translate(23, hat === '🎩' ? 18 : 11);   // top hat rests on the head; the crown floats a little higher
+  x.translate(23, 18);   // hat rests right on top of the head
   x.rotate(-.2);
   x.font = '17px "Segoe UI Emoji", "Apple Color Emoji", "Noto Color Emoji", sans-serif';
   x.fillText(hat, 0, 0);
