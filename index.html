@@ -150,6 +150,14 @@
   }
   #toast.show { transform: translate(-50%, 0); }
 
+  #musicBtn {
+    position: fixed; top: 16px; right: 16px; z-index: 10; width: 44px; height: 44px; border-radius: 50%;
+    border: 1px solid var(--line); background: #fff; font-size: 20px; cursor: pointer; box-shadow: var(--shadow);
+    transition: transform .2s var(--ease);
+  }
+  #musicBtn:hover { transform: scale(1.1); }
+  #musicBtn.off { opacity: .55; }
+
   /* ---------- carrot portal ---------- */
   #portalBtn {
     position: fixed; right: 24px; top: calc(50% + 64px); z-index: 10;
@@ -238,7 +246,7 @@
     <span class="chip">✖️ <b id="multi">1x</b> multiplier</span>
     <span class="chip" id="worldChip">🌾 <b id="worldName">Carrot Farm</b></span>
     <span class="chip" id="modChip" style="color:#6a2fc0;border-color:#cdb4ff" hidden>🛠️ <b style="color:#6a2fc0">Modded</b></span>
-    <span class="chip" id="beatChip" style="color:#b8860b;border-color:#f2d27a" hidden>🏆 <b style="color:#b8860b">Game beaten</b></span>
+    <span class="chip" id="beatChip" style="color:#b8860b;border-color:#f2d27a" hidden>🏆 <b style="color:#b8860b">Beaten <span id="beatCount">0</span>×</b></span>
   </div>
 </header>
 
@@ -301,6 +309,7 @@
   <div class="list" id="list"></div>
 </aside>
 
+<button id="musicBtn" aria-label="Turn music off" title="Music">🔊</button>
 <button id="portalBtn"><span class="icon">🌀</span>Carrot Portal</button>
 <div id="portalScrim"></div>
 <div id="portal" role="dialog" aria-label="Carrot Portal">
@@ -327,9 +336,11 @@ const CARROT_SKINS = [
   { id: 'midnight',name: 'Midnight', cost: 100000, boost: 10, b1: '#5a5f8a', b2: '#23263f', ridge: '#11131f', l1: '#7a86ff', l2: '#4450d8' },
 ];
 
-// a bunny wearing a little crown, for the shop icon
-const CROWNED_BUNNY = '<span style="position:relative;display:inline-block;line-height:1">🐰' +
-  '<span style="position:absolute;left:50%;top:-.42em;transform:translateX(-50%) rotate(-12deg);font-size:.55em">👑</span></span>';
+// a bunny wearing a little hat, for shop icons
+const hatBunnyIcon = hat => '<span style="position:relative;display:inline-block;line-height:1">🐰' +
+  `<span style="position:absolute;left:50%;top:-.42em;transform:translateX(-50%) rotate(-12deg);font-size:.55em">${hat}</span></span>`;
+const CROWNED_BUNNY = hatBunnyIcon('👑');
+const HAT_BUNNY = hatBunnyIcon('🎩');
 
 // an old-school pixel-art arrow pointer (B = black outline, W = white fill)
 function pixelArrowSvg(scale = 2) {
@@ -359,7 +370,9 @@ const CURSOR_SKINS = [
   { id: 'carrot',  name: 'Carrot',   cost: 6000,  emoji: '🥕' },
   { id: 'bunny',   name: 'Bunny',    cost: 20000,  emoji: '🐰' },
   { id: 'crown',   name: 'Crown',    cost: 75000, emoji: '👑' },
-  { id: 'king',    name: 'King Bunny', cost: 1000000, crowned: true, icon: CROWNED_BUNNY },
+  { id: 'king',    name: 'King Bunny', cost: 1000000, hat: '👑', icon: CROWNED_BUNNY },
+  // secret: only shows in the shop once earned by beating the game 3 times
+  { id: 'admin',   name: 'The Admin Bunny', secret: true, hat: '🎩', icon: HAT_BUNNY },
 ];
 
 const TRAILS = [
@@ -389,7 +402,7 @@ const WORLDS = [
     bg: 'linear-gradient(160deg, #ff8a3c, #4a1208)' },
   { id: 'jungle', name: 'Jungle World', emoji: '🌴', cost: 100000,  boost: 5,  desc: 'Leaves drift down from the trees',
     bg: 'linear-gradient(160deg, #eaf7df, #4a9437)' },
-  { id: 'space',  name: 'Space World',  emoji: '🚀', cost: 1000000, boost: 10, desc: 'The final world. Reach 1M carrots here to beat the game',
+  { id: 'space',  name: 'Space World',  emoji: '🚀', cost: 1000000, boost: 10, desc: 'The final world. Reach 100M carrots here to finish the game',
     bg: 'linear-gradient(160deg, #2a2f6a, #04050f)' },
 ];
 
@@ -401,7 +414,8 @@ const fresh = () => ({ carrots: 0, clicks: 0, autos: 0, mult: 1,
   carrotSkins: ['classic'], carrotSkin: 'classic', cursorSkins: ['default'], cursorSkin: 'default',
   trailSkins: ['none'], trailSkin: 'none', tapSkins: ['ripple'], tapSkin: 'ripple',
   crit: 0, turbo: 0, farms: 0, tractors: 0, golden: 0, cellar: 0, goldenCaught: 0, lastSeen: Date.now(),
-  world: 'normal', worldsUnlocked: ['normal'], endOffered: false, ended: false });
+  world: 'normal', worldsUnlocked: ['normal'], endOffered: false, magnet: 0, timesBeaten: 0 });
+const END_GOAL = 1e8;   // carrots needed in Space World to finish the game
 let state = fresh();
 try { Object.assign(state, JSON.parse(localStorage.getItem(SAVE_KEY)) || {}); } catch {}
 // fall back to the default if an equipped item was removed from the game
@@ -409,6 +423,7 @@ if (!CARROT_SKINS.some(t => t.id === state.carrotSkin)) state.carrotSkin = 'clas
 if (!CURSOR_SKINS.some(t => t.id === state.cursorSkin)) state.cursorSkin = 'default';
 if (!TRAILS.some(t => t.id === state.trailSkin)) state.trailSkin = 'none';
 if (!WORLDS.some(w => w.id === state.world)) state.world = 'normal';
+if (state.ended) { state.timesBeaten = Math.max(state.timesBeaten, 1); delete state.ended; }  // older saves
 if (!TAPS.some(t => t.id === state.tapSkin)) state.tapSkin = 'ripple';
 if (!state.tapSkins.includes('ripple')) state.tapSkins.push('ripple');
 const save = () => { state.lastSeen = Date.now(); try { localStorage.setItem(SAVE_KEY, JSON.stringify(state)); } catch {} };
@@ -450,6 +465,9 @@ const UPGRADES = [
   { key: 'cellar', ico: '🏚️', name: 'Carrot Cellar', max: 1,
     desc: () => 'Keep earning 50% of your carrots/sec while the game is closed (up to 8 hours)',
     cost: () => 25000, toast: '🏚️ Your cellar will collect carrots while you\'re away!' },
+  { key: 'magnet', ico: '🧲', name: 'Golden Magnet', max: 1,
+    desc: () => 'Golden carrots get pulled into your carrot and collected automatically as they fly by',
+    cost: () => 500000, toast: '🧲 Golden carrots will come to you now!' },
 ];
 const fmt = n => {
   n = Math.floor(n);
@@ -661,7 +679,9 @@ function emojiCursor(emoji) {
   x.fillText(emoji, 20, 22);
   return cursorCache[emoji] = `url(${c.toDataURL()}) 10 6, pointer`;
 }
-function crownedBunnyCursor() {
+// a bunny emoji wearing a hat emoji (crown or top hat), drawn as a cursor
+function hatBunnyCursor(hat) {
+  if (cursorCache[hat + 'bunny']) return cursorCache[hat + 'bunny'];
   const c = document.createElement('canvas');
   c.width = c.height = 48;
   const x = c.getContext('2d');
@@ -672,8 +692,8 @@ function crownedBunnyCursor() {
   x.translate(23, 11);
   x.rotate(-.2);
   x.font = '17px "Segoe UI Emoji", "Apple Color Emoji", "Noto Color Emoji", sans-serif';
-  x.fillText('👑', 0, 0);
-  return `url(${c.toDataURL()}) 12 14, pointer`;
+  x.fillText(hat, 0, 0);
+  return cursorCache[hat + 'bunny'] = `url(${c.toDataURL()}) 12 14, pointer`;
 }
 
 function applyCursorSkin() {
@@ -682,7 +702,7 @@ function applyCursorSkin() {
   const cursor = s.emoji ? emojiCursor(s.emoji)
     : s.arrow ? `url("data:image/svg+xml,${encodeURIComponent(arrowSvg(s.arrow))}") 5 3, pointer`
     : s.pixel ? `url("data:image/svg+xml,${encodeURIComponent(pixelArrowSvg())}") 1 1, pointer`
-    : s.crowned ? crownedBunnyCursor() : null;
+    : s.hat ? hatBunnyCursor(s.hat) : null;
   html.classList.toggle('custom-cursor', !!cursor);
   if (cursor) html.style.setProperty('--cursor', cursor);
 }
@@ -712,7 +732,7 @@ function skinRow(s, i, kind) {
   const btn = equipped ? '<button class="buy done" disabled>Equipped</button>'
     : owned ? `<button class="buy ghost" data-action="equip-${kind}:${s.id}">Equip</button>`
     : buyBtn(`skin-${kind}:${s.id}`, s.cost);
-  let desc = s.cost ? (owned ? 'Owned' : SKIN_LABEL[kind]) : 'Free';
+  let desc = s.secret ? '🏆 Earned by beating the game 3 times' : s.cost ? (owned ? 'Owned' : SKIN_LABEL[kind]) : 'Free';
   if (s.boost) desc = `<b style="color:var(--accent)">${s.boost}x carrots per click</b> · ${desc}`;
   return itemHTML({ ico, name: s.name, desc, btn, equipped, i });
 }
@@ -729,7 +749,7 @@ function renderShop() {
     }).join('');
   } else {
     const [kind, list] = SKIN_TABS[tab];
-    html = list.map((s, i) => skinRow(s, i, kind)).join('');
+    html = list.filter(s => !s.secret || state[kind + 'Skins'].includes(s.id)).map((s, i) => skinRow(s, i, kind)).join('');
   }
   const modBtn = state.modded
     ? '<button class="mod-btn normal" id="modBtn">↩️ Back to normal mode</button>'
@@ -751,6 +771,131 @@ function toast(msg) {
   clearTimeout(toast.timer);
   toast.timer = setTimeout(() => t.classList.remove('show'), 1800);
 }
+
+// ---------- background music ----------
+// An original, laid-back jazzy loop synthesized live with the Web Audio API (no audio files).
+// 8 bars: Cmaj7 Am7 Dm7 G7 Em7 A7 Dm7 G7, with vibraphone-ish lead, soft keys, bass and a shaker.
+const MUSIC_KEY = 'carrotClickerMusic';
+const Music = (() => {
+  const BPM = 112, BEAT = 60 / BPM, BAR = BEAT * 4;
+  const CHORDS = [[60, 64, 67, 71], [57, 60, 64, 67], [57, 60, 62, 65], [55, 59, 62, 65],
+                  [55, 59, 62, 64], [55, 61, 64, 69], [57, 60, 62, 65], [55, 59, 62, 65]];
+  const BASS = [36, 33, 38, 31, 40, 33, 38, 31];
+  // melody: [eighth-note position in bar, midi note, length in eighths]
+  const MELODY = [
+    [[0, 76, 1], [1, 79, 1], [2, 83, 2], [4, 81, 1], [5, 79, 1], [6, 76, 2]],
+    [[0, 72, 1], [1, 76, 1], [2, 81, 3], [6, 79, 2]],
+    [[0, 77, 1], [1, 81, 1], [2, 84, 2], [4, 83, 1], [5, 81, 1], [6, 77, 2]],
+    [[0, 79, 3], [3, 77, 1], [4, 74, 2], [6, 71, 2]],
+    [[0, 76, 1], [1, 79, 1], [2, 83, 1], [3, 86, 3], [6, 83, 2]],
+    [[0, 85, 2], [2, 81, 1], [3, 79, 1], [4, 76, 4]],
+    [[0, 74, 1], [1, 77, 1], [2, 81, 1], [3, 84, 1], [4, 83, 1], [5, 81, 1], [6, 77, 2]],
+    [[0, 79, 4], [4, 74, 1], [5, 77, 1], [6, 71, 2]],
+  ];
+  const hz = m => 440 * 2 ** ((m - 69) / 12);
+  let ctx, master, noise, timer, bar = 0, nextBar = 0;
+  // swing the off-beat eighths a little for a relaxed feel
+  const at = (start, pos) => start + Math.floor(pos / 2) * BEAT + (pos % 2 ? BEAT * .62 : 0);
+
+  function tone(type, freq, t, len, vol, attack = .01) {
+    const o = ctx.createOscillator(), g = ctx.createGain();
+    o.type = type;
+    o.frequency.value = freq;
+    g.gain.setValueAtTime(0, t);
+    g.gain.linearRampToValueAtTime(vol, t + attack);
+    g.gain.exponentialRampToValueAtTime(.0001, t + len);
+    o.connect(g).connect(master);
+    o.start(t);
+    o.stop(t + len + .05);
+  }
+  function shaker(t, vol) {
+    const s = ctx.createBufferSource(), f = ctx.createBiquadFilter(), g = ctx.createGain();
+    s.buffer = noise;
+    f.type = 'highpass';
+    f.frequency.value = 7000;
+    g.gain.setValueAtTime(vol, t);
+    g.gain.exponentialRampToValueAtTime(.0001, t + .06);
+    s.connect(f).connect(g).connect(master);
+    s.start(t);
+    s.stop(t + .08);
+  }
+  function playBar(i, start) {
+    for (const [pos, m, len] of MELODY[i]) {        // vibraphone-like lead
+      const t = at(start, pos), d = len * BEAT / 2 + .25;
+      tone('sine', hz(m), t, d, .16);
+      tone('sine', hz(m) * 4, t, .25, .025);
+    }
+    for (const pos of [0, 3, 5]) {                    // soft electric-piano comping
+      for (const m of CHORDS[i]) tone('triangle', hz(m), at(start, pos), BEAT * .9, .035);
+    }
+    tone('triangle', hz(BASS[i]), start, BEAT * 1.6, .22);           // bass: root, then fifth
+    tone('triangle', hz(BASS[i] + 7), start + BEAT * 2, BEAT * 1.6, .18);
+    for (let p = 0; p < 8; p++) shaker(at(start, p), p % 2 ? .05 : .03);
+    for (const b of [1, 3]) tone('sine', 1800, start + b * BEAT, .03, .03, .002);  // rim click
+  }
+  function schedule() {
+    while (nextBar < ctx.currentTime + .3) {
+      playBar(bar, nextBar);
+      bar = (bar + 1) % 8;
+      nextBar += BAR;
+    }
+  }
+  return {
+    start() {
+      if (!ctx) {
+        ctx = new (window.AudioContext || window.webkitAudioContext)();
+        master = ctx.createGain();
+        master.gain.value = 0;
+        const soften = ctx.createBiquadFilter();
+        soften.type = 'lowpass';
+        soften.frequency.value = 5000;
+        master.connect(soften).connect(ctx.destination);
+        noise = ctx.createBuffer(1, ctx.sampleRate * .1, ctx.sampleRate);
+        const d = noise.getChannelData(0);
+        for (let i = 0; i < d.length; i++) d[i] = Math.random() * 2 - 1;
+      }
+      ctx.resume();
+      nextBar = Math.max(nextBar, ctx.currentTime + .1);
+      clearInterval(timer);
+      timer = setInterval(schedule, 60);
+      master.gain.cancelScheduledValues(ctx.currentTime);
+      master.gain.linearRampToValueAtTime(.35, ctx.currentTime + 1.5);   // quiet, but you can hear it
+    },
+    stop() {
+      if (!ctx) return;
+      master.gain.cancelScheduledValues(ctx.currentTime);
+      master.gain.linearRampToValueAtTime(0, ctx.currentTime + .4);
+      setTimeout(() => { clearInterval(timer); ctx.suspend(); }, 450);
+    },
+  };
+})();
+
+let musicOn = true;
+try { musicOn = localStorage.getItem(MUSIC_KEY) !== 'off'; } catch {}
+function updateMusicBtn() {
+  $('musicBtn').textContent = musicOn ? '🔊' : '🔇';
+  $('musicBtn').classList.toggle('off', !musicOn);
+  $('musicBtn').setAttribute('aria-label', musicOn ? 'Turn music off' : 'Turn music on');
+}
+$('musicBtn').addEventListener('click', () => {
+  musicOn = !musicOn;
+  try { localStorage.setItem(MUSIC_KEY, musicOn ? 'on' : 'off'); } catch {}
+  musicOn ? Music.start() : Music.stop();
+  updateMusicBtn();
+});
+// browsers only allow sound after the player interacts, so start on the first tap/click/key
+const firstTouch = () => {
+  removeEventListener('pointerdown', firstTouch, true);
+  removeEventListener('keydown', firstTouch, true);
+  if (musicOn) Music.start();
+};
+addEventListener('pointerdown', firstTouch, true);
+addEventListener('keydown', firstTouch, true);
+document.addEventListener('visibilitychange', () => {
+  if (!musicOn) return;
+  document.hidden ? Music.stop() : Music.start();
+});
+updateMusicBtn();
 
 // ---------- worlds ----------
 function applyWorld() {
@@ -826,7 +971,7 @@ function renderPortal() {
     const current = state.world === w.id;
     const reachable = i === 0 || state.worldsUnlocked.includes(WORLDS[i - 1].id);
     let btn;
-    if (current && w.id === 'space' && state.carrots >= 1e6) btn = '<button class="buy" data-end>🏁 End game</button>';
+    if (current && w.id === 'space' && state.carrots >= END_GOAL) btn = '<button class="buy" data-end>🏁 End game</button>';
     else if (current) btn = '<button class="buy done" disabled>You\'re here</button>';
     else if (unlocked) btn = `<button class="buy ghost" data-world="${w.id}">Travel</button>`;
     else if (reachable) btn = `<button class="buy" data-world="${w.id}" data-cost="${w.cost}">🥕 ${fmt(w.cost)}</button>`;
@@ -836,10 +981,10 @@ function renderPortal() {
     return itemHTML({ i, ico: `<div class="world-ico" style="background:${w.bg}">${w.emoji}</div>`,
       name: w.name + tag, desc, btn, equipped: current });
   }).join('');
-  portalKey = state.world + (state.carrots >= 1e6);
+  portalKey = state.world + (state.carrots >= END_GOAL);
 }
 function updatePortal() {
-  if (portalKey !== state.world + (state.carrots >= 1e6)) renderPortal();
+  if (portalKey !== state.world + (state.carrots >= END_GOAL)) renderPortal();
   for (const b of $('worldList').querySelectorAll('.buy[data-cost]')) b.disabled = state.carrots < +b.dataset.cost;
 }
 const openPortal = () => { closeShop(); renderPortal(); updatePortal(); document.body.classList.add('portal-open'); };
@@ -851,7 +996,7 @@ $('portalScrim').addEventListener('click', closePortal);
 $('worldList').addEventListener('click', e => {
   const btn = e.target.closest('.buy');
   if (!btn || btn.disabled) return;
-  if ('end' in btn.dataset) { closePortal(); showEnding(); return; }
+  if ('end' in btn.dataset) { closePortal(); endGame(); return; }
   const w = worldOf(btn.dataset.world);
   if (!state.worldsUnlocked.includes(w.id)) {
     if (state.carrots < w.cost) return;
@@ -894,33 +1039,53 @@ function showEndChoice() {
   save();
   showEndModal(`<div class="big">🚀</div>
     <h2>You made it!</h2>
-    <p>You reached <b>1,000,000 carrots</b> in Space World.<br>Do you want to end the game here, or keep playing?</p>
+    <p>You reached <b>100,000,000 carrots</b> in Space World!<br>
+      End the game to win and start over from the beginning with 0 carrots, or keep playing?</p>
     <button class="big-btn primary" data-act="end">🏁 End the game</button>
     <button class="big-btn light" data-act="keep">Keep playing</button>`);
 }
 
-function showEnding() {
-  state.ended = true;
-  save();
+// finishing the game: counts a win, then sends you back to the very beginning.
+// Wins and the Admin Bunny (earned on the 3rd win) are kept. Wins in modded mode don't count.
+function endGame() {
+  const stats = { clicks: state.clicks, golden: state.goldenCaught, carrots: state.carrots };
+  const counted = !state.modded;
+  const wins = state.timesBeaten + (counted ? 1 : 0);
+  const hadAdmin = state.cursorSkins.includes('admin');
+  const newAdmin = counted && wins >= 3 && !hadAdmin;
+  const adminOn = newAdmin || (hadAdmin && state.cursorSkin === 'admin');
+
+  resetGame();
+  state.timesBeaten = wins;
+  if (hadAdmin || newAdmin) state.cursorSkins.push('admin');
+  if (adminOn) state.cursorSkin = 'admin';
+  refreshAll();
+
+  const extra = newAdmin
+    ? `<div class="item equipped" style="text-align:left;margin-bottom:12px;animation:none">
+         <div class="ico" style="font-size:30px">${HAT_BUNNY}</div>
+         <div class="info"><div class="name">New cursor: The Admin Bunny!</div>
+         <div class="desc">You beat the game 3 times. It's equipped now, and it's in your shop under Mice.</div></div></div>`
+    : !counted ? '<p>Wins in modded mode don\'t count toward your total.</p>'
+    : wins < 3 ? `<p>Beat it <b>${3 - wins} more time${3 - wins === 1 ? '' : 's'}</b> to unlock a secret cursor 👀</p>` : '';
   showEndModal(`<div class="big">🏆</div>
     <h2>You beat Carrot Clicker!</h2>
-    <p>From one carrot on a farm all the way to space. Thanks for playing!</p>
+    <p>From one carrot on a farm all the way to space. Wins: <b>${wins}</b></p>
     <div class="end-stats">
-      <div><b>${fmt(state.clicks)}</b>clicks</div>
-      <div><b>${fmt(state.goldenCaught)}</b>golden carrots</div>
-      <div><b>${fmt(state.carrots)}</b>carrots</div>
+      <div><b>${fmt(stats.clicks)}</b>clicks</div>
+      <div><b>${fmt(stats.golden)}</b>golden carrots</div>
+      <div><b>${fmt(stats.carrots)}</b>carrots</div>
     </div>
-    <button class="big-btn dark" data-act="keep">Keep playing anyway</button>
-    <button class="big-btn light" data-act="restart">🔄 Start a new game</button>`);
+    ${extra}
+    <button class="big-btn primary" data-act="keep">🥕 Start again</button>`);
   const r = $('endCard').getBoundingClientRect();
   fling(r.left + r.width / 2, r.top + 60, { n: 14, make: () => emo('⭐', 22), dist: [90, 180], dur: 1200, spin: 360, even: true });
 }
 
 $('endModal').addEventListener('click', e => {
   const act = e.target.closest('[data-act]')?.dataset.act;
-  if (act === 'end') showEnding();
+  if (act === 'end') endGame();
   else if (act === 'keep') { hideEndModal(); render(); }
-  else if (act === 'restart') { hideEndModal(); resetGame(); toast('🔄 New game started. Good luck!'); }
 });
 
 function resetGame() {
@@ -948,7 +1113,9 @@ function enterModded() {
   state.modded = true;
   state.carrots = 1e9;
   for (const u of UPGRADES) state[u.key] = u.max || Math.max(state[u.key], 10);
-  for (const [kind, list] of Object.values(SKIN_TABS)) state[kind + 'Skins'] = list.map(s => s.id);
+  for (const [kind, list] of Object.values(SKIN_TABS)) {
+    state[kind + 'Skins'] = list.filter(s => !s.secret || state[kind + 'Skins'].includes(s.id)).map(s => s.id);
+  }
   state.worldsUnlocked = WORLDS.map(w => w.id);
   refreshAll();
   toast('🔓 Modded mode: everything unlocked!');
@@ -1040,10 +1207,11 @@ function render() {
   $('perSec').textContent = fmt(perSec());
   $('multi').textContent = clickValue() + 'x';
   $('modChip').hidden = !state.modded;
-  $('beatChip').hidden = !state.ended;
+  $('beatChip').hidden = !state.timesBeaten;
+  $('beatCount').textContent = state.timesBeaten;
   if (document.body.classList.contains('portal-open')) updatePortal();
   // reaching 1M in Space World: offer to end the game (once)
-  if (state.world === 'space' && state.carrots >= 1e6 && !state.endOffered) showEndChoice();
+  if (state.world === 'space' && state.carrots >= END_GOAL && !state.endOffered) showEndChoice();
   $('goldCount').textContent = fmt(state.goldenCaught);
   $('shopBal').textContent = fmt(state.carrots);
   document.title = `${fmt(state.carrots)} ${$('carrots').lastChild.textContent} · Carrot Clicker`;
@@ -1111,10 +1279,31 @@ function flyGolden({ duration = 9000, rush = false } = {}) {
   const flight = g.animate(frames, { duration, easing: 'linear' });
   flight.onfinish = () => g.remove();
   g.addEventListener('pointerdown', e => {
+    if (g.dataset.caught) return;
+    g.dataset.caught = 1;
     flight.cancel();
     g.remove();
     catchGolden(e.clientX, e.clientY, rush);
   });
+  // Golden Magnet: partway across the screen, pull it into the carrot and collect it
+  if (state.magnet) setTimeout(() => magnetPull(g, flight, rush), duration * (.2 + Math.random() * .3));
+}
+
+function magnetPull(g, flight, rush) {
+  if (!state.magnet || g.dataset.caught || !g.isConnected) return;
+  g.dataset.caught = 1;
+  const from = g.getBoundingClientRect();
+  const to = $('carrotBtn').getBoundingClientRect();
+  const baseTop = g.offsetTop;
+  flight.cancel();
+  const tx = to.left + to.width / 2 - from.width / 2, ty = to.top + to.height * .4 - baseTop;
+  g.animate([
+    { transform: `translate(${from.left}px, ${from.top - baseTop}px) scale(1)` },
+    { transform: `translate(${tx}px, ${ty}px) scale(.3) rotate(360deg)` },
+  ], { duration: 550, easing: 'cubic-bezier(.5,0,.9,.6)', fill: 'forwards' }).onfinish = () => {
+    g.remove();
+    catchGolden(to.left + to.width / 2, to.top + to.height * .4, rush);
+  };
 }
 
 function catchGolden(x, y, rush) {
