@@ -57,13 +57,6 @@
   .float.crit { font-size: 30px; color: #ff3d6e; white-space: nowrap; }
   .float.gold { font-size: 28px; color: #e0a800; white-space: nowrap; }
   .float.mega { font-size: 36px; color: #ff3d6e; white-space: nowrap; text-shadow: 0 3px 0 #fff, 0 0 18px rgba(255, 80, 120, .6); }
-  /* the 🔥 combo counter next to the carrot */
-  .combo {
-    position: absolute; right: 0; top: 34px; z-index: 3; pointer-events: none; white-space: nowrap;
-    font-size: 26px; font-weight: 900; rotate: 10deg; opacity: 0; transition: opacity .3s;
-    text-shadow: 0 2px 0 #fff, 0 0 14px rgba(255, 120, 30, .55);
-  }
-  .combo.show { opacity: 1; }
   #goldTint {
     position: fixed; inset: 0; z-index: 14; pointer-events: none; opacity: 0; transition: opacity .8s;
     background: radial-gradient(circle at 50% 45%, rgba(255, 220, 80, .12), rgba(255, 190, 30, .3));
@@ -469,7 +462,6 @@
   <div class="carrot-wrap" id="wrap">
     <div class="rays"></div>
     <div class="glowfx"></div>
-    <div id="combo" class="combo"></div>
     <div class="shadow"></div>
     <button id="carrotBtn" aria-label="Click the carrot">
       <svg viewBox="0 0 200 260" aria-hidden="true">
@@ -1395,18 +1387,9 @@ function addCombo() {
   const now = performance.now();
   combo = now - lastTapAt < COMBO_WINDOW ? combo + 1 : 1;
   lastTapAt = now;
-  const el = $('combo');
-  if (combo < 5) return;
-  el.textContent = `🔥 x${combo}`;
-  el.style.color = `hsl(${30 - (comboPower() - 1) * 40} 100% 50%)`;   // orange → red → pink as it heats up
-  el.classList.add('show');
-  el.animate([{ scale: 1 }, { scale: 1.35 }, { scale: 1 }], { duration: 180, easing: 'ease-out' });
 }
 function checkComboTimeout() {
-  if (combo && performance.now() - lastTapAt > COMBO_WINDOW) {
-    combo = 0;
-    $('combo').classList.remove('show');
-  }
+  if (combo && performance.now() - lastTapAt > COMBO_WINDOW) combo = 0;
 }
 // every combo milestone: a mega version of your tap effect, extra rings, a shake and a big shout
 function comboMilestone() {
