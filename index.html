@@ -542,6 +542,7 @@
 
 <div id="toast"></div>
 <div id="goldTint"></div>
+<canvas id="lineTrail" style="position:fixed;inset:0;width:100%;height:100%;pointer-events:none;z-index:40"></canvas>
 
 <script>
 // boost: the equipped skin multiplies carrots per click
@@ -607,19 +608,46 @@ const CURSOR_SKINS = [
   { id: 'admin',   name: 'The Admin Bunny', secret: true, hat: '🎩', icon: HAT_BUNNY },
 ];
 
+// shop icon for a line trail: a short slanted streak, fading in from the tail
+const lineIcon = (head, tail = head) => `<span style="display:block;width:34px;height:6px;border-radius:3px;` +
+  `background:linear-gradient(90deg, transparent, ${tail} 40%, ${head});box-shadow:0 0 8px ${head};transform:rotate(-30deg)"></span>`;
+
+// trails with `line` are drawn as one smooth line that chases the cursor (see drawLineTrail).
+// line: life = how long a point lasts (ms, so longer = longer line), width at the head, color(f) where
+// f goes from 0 at the tail to 1 at the head, optional glow color + blur, and jitter for a zappy look
 const TRAILS = [
   { id: 'none',    name: 'No Trail',     cost: 0,      icon: '🚫' },
-  { id: 'glow',    name: 'Orange Glow',  cost: 1500,   icon: '🟠', color: '#ff8a2b' },
+  { id: 'glow',    name: 'Orange Glow',  cost: 1500,   icon: lineIcon('#ff8a2b'),
+    line: { life: 300, width: 6, color: () => '#ff8a2b', glow: '#ff8a2b', blur: 12 } },
   { id: 'pixel',   name: 'Pixel',        cost: 3000,   icon: '👾', style: 'pixel' },
-  { id: 'comet',   name: 'Comet',        cost: 6000,   icon: '☄️', style: 'comet' },
+  { id: 'comet',   name: 'Comet',        cost: 6000,   icon: lineIcon('#fff2b0', '#ff8a2b'),
+    line: { life: 450, width: 9, color: f => `hsl(${25 + 30 * f} 100% ${55 + 20 * f}%)`, glow: '#ffb347', blur: 14 } },
+  { id: 'white',   name: 'Clean Line',   cost: 8000,   icon: lineIcon('#ffffff', '#dfe3ea'),
+    line: { life: 280, width: 4, color: () => '#fff', glow: 'rgba(0,0,0,.35)', blur: 5 } },
   { id: 'smoke',   name: 'Smoke',        cost: 12000,  icon: '💨', style: 'smoke' },
   { id: 'stars',   name: 'Stardust',     cost: 20000,  icon: '⭐', emoji: '⭐' },
-  { id: 'fire',    name: 'Fire',         cost: 50000,  icon: '🔥', style: 'fire' },
-  { id: 'neon',    name: 'Neon',         cost: 80000,  icon: '💡', style: 'neon' },
+  { id: 'laser',   name: 'Laser',        cost: 35000,  icon: lineIcon('#ff2a2a'),
+    line: { life: 220, width: 3, color: () => '#ff3b3b', glow: '#ff2a2a', blur: 14 } },
+  { id: 'fire',    name: 'Fire',         cost: 50000,  icon: lineIcon('#ffd166', '#ff3d1a'),
+    line: { life: 350, width: 10, color: f => `hsl(${8 + 42 * f} 100% ${48 + 14 * f}%)`, glow: '#ff5a1a', blur: 16 } },
+  { id: 'toxic',   name: 'Toxic',        cost: 70000,  icon: lineIcon('#7dff3a'),
+    line: { life: 320, width: 6, color: () => '#8dff4a', glow: '#3aff6a', blur: 14 } },
+  { id: 'neon',    name: 'Neon',         cost: 80000,  icon: lineIcon('#ff3dd8', '#2ef2ff'),
+    line: { life: 400, width: 5, color: f => `hsl(${185 + 130 * f} 100% 62%)`, glow: '#ff3dd8', blur: 14 } },
+  { id: 'ice',     name: 'Frost Line',   cost: 100000, icon: lineIcon('#e9fbff', '#7fd6ff'),
+    line: { life: 380, width: 6, color: f => `hsl(195 100% ${70 + 25 * f}%)`, glow: '#8fe3ff', blur: 12 } },
   { id: 'snow',    name: 'Snowfall',     cost: 120000, icon: '❄️', emoji: '❄️' },
   { id: 'carrots', name: 'Carrot Trail', cost: 150000, icon: '🥕', emoji: '🥕' },
-  { id: 'sparks',  name: 'Electric Sparks', cost: 300000, icon: '⚡', style: 'sparks' },
-  { id: 'shadow',  name: 'Admin Shadow', secret: true, icon: '🖤', style: 'shadow' },
+  { id: 'gold',    name: 'Gold Line',    cost: 200000, icon: lineIcon('#fff0a0', '#e0a800'),
+    line: { life: 350, width: 6, color: f => `hsl(${42 + 8 * f} 100% ${48 + 22 * f}%)`, glow: '#ffd23f', blur: 16 } },
+  { id: 'sparks',  name: 'Electric Sparks', cost: 300000, icon: lineIcon('#9ffcff'),
+    line: { life: 220, width: 3, color: () => '#b8fdff', glow: '#2ef2ff', blur: 10, jitter: 7 } },
+  { id: 'plasma',  name: 'Plasma',       cost: 450000, icon: lineIcon('#c9a6ff', '#4b5bff'),
+    line: { life: 420, width: 7, color: f => `hsl(${235 + 45 * f} 100% ${58 + 14 * f}%)`, glow: '#8a4dff', blur: 18 } },
+  { id: 'sunset',  name: 'Sunset',       cost: 650000, icon: lineIcon('#ffb347', '#ff4fa3'),
+    line: { life: 420, width: 7, color: f => `hsl(${330 + 60 * f} 100% 62%)`, glow: '#ff7a5a', blur: 16 } },
+  { id: 'shadow',  name: 'Admin Shadow', secret: true, icon: lineIcon('#000', '#555'),
+    line: { life: 250, width: 4.5, color: () => '#000' } },
 ];
 
 const TAPS = [
@@ -938,6 +966,12 @@ let lastTrail = 0;
 addEventListener('pointermove', e => {
   const t = TRAILS.find(k => k.id === state.trailSkin);
   if (!t || t.id === 'none') return;
+  if (t.line) {   // line trails just record the point; drawLineTrail() draws them every frame
+    const j = t.line.jitter || 0;
+    linePts.push({ x: e.clientX + rnd(-j, j), y: e.clientY + rnd(-j, j), t: performance.now() });
+    lineCfg = t.line;
+    return;
+  }
   const style = TRAIL_STYLES[t.style] || (t.emoji ? TRAIL_STYLES.emoji : TRAIL_STYLES.dot);
   const now = performance.now();
   if (now - lastTrail < style.gap) return;
@@ -951,7 +985,44 @@ addEventListener('pointermove', e => {
 });
 
 const place = (el, x, y) => { el.style.left = x + 'px'; el.style.top = y + 'px'; return el; };
-let lastPixel = '', neonFlip = false;
+let lastPixel = '';
+
+// line trails: keep the last fraction of a second of mouse points and draw them as one smooth line
+// that gets thinner (and shifts color) toward the tail, so it looks like a short line chasing the cursor
+const lineCanvas = $('lineTrail'), lineCtx = lineCanvas.getContext('2d');
+let linePts = [], lineCfg = null;
+function sizeLineCanvas() {
+  const d = devicePixelRatio || 1;
+  lineCanvas.width = innerWidth * d;
+  lineCanvas.height = innerHeight * d;
+  lineCtx.setTransform(d, 0, 0, d, 0, 0);
+}
+let lineDirty = false;
+function drawLineTrail(now) {
+  if (!linePts.length) {   // nothing to draw: wipe whatever was left once, then do nothing
+    if (lineDirty) { lineCtx.clearRect(0, 0, innerWidth, innerHeight); lineDirty = false; }
+    return;
+  }
+  lineDirty = true;
+  const c = lineCfg;
+  linePts = linePts.filter(p => now - p.t < c.life);
+  lineCtx.clearRect(0, 0, innerWidth, innerHeight);
+  lineCtx.lineCap = lineCtx.lineJoin = 'round';
+  lineCtx.shadowColor = c.glow || 'transparent';
+  lineCtx.shadowBlur = c.blur || 0;
+  for (let i = 1; i < linePts.length; i++) {
+    const a = linePts[i - 1], b = linePts[i];
+    const f = Math.max(0, 1 - (now - b.t) / c.life);   // 1 at the cursor, 0 at the tail
+    lineCtx.strokeStyle = c.color(f);
+    lineCtx.lineWidth = .5 + c.width * f;
+    lineCtx.beginPath();
+    lineCtx.moveTo(a.x, a.y);
+    lineCtx.lineTo(b.x, b.y);
+    lineCtx.stroke();
+  }
+}
+sizeLineCanvas();
+addEventListener('resize', sizeLineCanvas);
 // each trail style: minimum ms between pieces, and make() -> [element, keyframes, options]
 const TRAIL_STYLES = {
   dot: { gap: 16, make: (x, y, t) => [place(dot(t.color, 10), x, y), [
@@ -971,38 +1042,6 @@ const TRAIL_STYLES = {
     el.style.cssText = `width:8px;height:8px;background:${['#ff7a1a', '#ffa24a', '#f26200'][Math.random() * 3 | 0]}`;
     return [place(el, gx, gy), [{ opacity: 1 }, { opacity: 0 }], { duration: 600, easing: 'steps(4)' }];
   } },
-
-  // dense glowing dots that shrink quickly, like a comet tail
-  comet: { gap: 0, make: (x, y) => [place(dot('#ff8a2b', 9), x, y), [
-    { transform: 'translate(-50%,-50%) scale(1)', opacity: 1 },
-    { transform: 'translate(-50%,-50%) scale(0)', opacity: .3 }], { duration: 350, easing: 'linear' }] },
-
-  // flickering flames that drift upward
-  fire: { gap: 14, make: (x, y) => [place(dot(['#ffd166', '#ff9a3c', '#ff5a1a'][Math.random() * 3 | 0], 11), x, y), [
-    { transform: 'translate(-50%,-50%) scale(1)', opacity: 1 },
-    { transform: `translate(calc(-50% + ${rnd(-6, 6)}px), calc(-50% - 24px)) scale(.15)`, opacity: 0 }],
-    { duration: 480, easing: 'ease-out' }] },
-
-  // glowing pink and cyan dots, alternating
-  neon: { gap: 12, make: (x, y) => [place(dot((neonFlip = !neonFlip) ? '#ff3dd8' : '#2ef2ff', 8), x, y), [
-    { transform: 'translate(-50%,-50%) scale(1)', opacity: 1 },
-    { transform: 'translate(-50%,-50%) scale(.3)', opacity: 0 }], { duration: 500, easing: 'ease-out' }] },
-
-  // tiny electric streaks zapping off in random directions
-  sparks: { gap: 8, make: (x, y) => {
-    const el = document.createElement('div');
-    el.style.cssText = 'width:11px;height:2px;border-radius:2px;background:#9ffcff;box-shadow:0 0 6px #2ef2ff';
-    const a = rnd(0, 360);
-    return [place(el, x, y), [
-      { transform: `translate(-50%,-50%) rotate(${a}deg) translateX(0)`, opacity: 1 },
-      { transform: `translate(-50%,-50%) rotate(${a}deg) translateX(${rnd(18, 34)}px)`, opacity: 0 }],
-      { duration: 300, easing: 'ease-out' }];
-  } },
-
-  // The Admin Bunny's trail: short, solid black, fades fast
-  shadow: { gap: 0, make: (x, y) => [place(dot('#000', 9), x, y), [
-    { transform: 'translate(-50%,-50%) scale(1)', opacity: .95 },
-    { transform: 'translate(-50%,-50%) scale(0)', opacity: 0 }], { duration: 260, easing: 'ease-out' }] },
 
   smoke: { gap: 30, make: (x, y) => {
     const el = document.createElement('div');
@@ -1802,6 +1841,7 @@ function tick(now) {
   state.carrots += perSec() * dt;
   questAdd('earned', perSec() * dt);
   if (!lobbyOpen && !document.hidden) questAdd('seconds', dt);
+  drawLineTrail(now);
   last = now;
   render();
   requestAnimationFrame(tick);
