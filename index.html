@@ -83,7 +83,7 @@
   body.shop-open #shopBtn { opacity: 0; transform: translateY(-50%) translateX(40px); pointer-events: none; }
 
   #scrim { position: fixed; inset: 0; background: rgba(20,24,32,.12); opacity: 0; pointer-events: none; transition: opacity .3s; z-index: 19; }
-  body.shop-open #scrim { opacity: 1; pointer-events: auto; }
+  body.shop-open #scrim { opacity: 1; }   /* just a tint: the carrot stays clickable while shopping */
 
   #shop {
     position: fixed; top: 12px; right: 12px; bottom: 12px; width: min(400px, calc(100vw - 24px)); z-index: 20;
@@ -109,7 +109,7 @@
     background: #fff; transition: transform .2s var(--ease), box-shadow .2s, border-color .2s;
     animation: in .4s var(--ease) both;
   }
-  .item:hover { transform: translateY(-2px); box-shadow: var(--shadow); }
+  .item:hover { box-shadow: var(--shadow); }
   .item.equipped { border-color: var(--accent); background: var(--accent-soft); }
   @keyframes in { from { opacity: 0; transform: translateY(12px); } }
   .item .ico { width: 52px; height: 52px; border-radius: 14px; background: var(--bg-soft); display: grid; place-items: center; font-size: 28px; flex-shrink: 0; }
@@ -120,8 +120,9 @@
     border: none; font: inherit; font-weight: 700; font-size: 14px; padding: 10px 14px; border-radius: 12px; cursor: pointer; white-space: nowrap;
     background: var(--accent); color: #fff; transition: transform .2s var(--ease), background .2s, opacity .2s;
   }
-  .buy:hover:not(:disabled) { transform: scale(1.06); }
-  .buy:active:not(:disabled) { transform: scale(.95); }
+  /* feedback by color/glow only: changing the size made taps near the edge miss (laptop touchpads) */
+  .buy:hover:not(:disabled) { filter: brightness(1.08); box-shadow: 0 4px 12px rgba(0, 0, 0, .15); }
+  .buy:active:not(:disabled) { filter: brightness(.9); box-shadow: none; }
   .buy:disabled { background: var(--line); color: var(--muted); cursor: not-allowed; }
   .buy.ghost { background: var(--text); }
   .buy.done, .buy.done:disabled { background: var(--green); color: #fff; cursor: default; }
@@ -135,7 +136,7 @@
     background: #f5efff; color: #6a2fc0; font: inherit; font-weight: 700; cursor: pointer;
     transition: transform .2s var(--ease), background .2s;
   }
-  .mod-btn:hover { transform: translateY(-2px); background: #ece1ff; }
+  .mod-btn:hover { background: #ece1ff; }
   .mod-btn.normal { border: 2px solid var(--text); background: var(--text); color: #fff; }
   .mod-btn.normal:hover { background: #000; }
   .reset {
@@ -143,7 +144,7 @@
     background: #e5383b; color: #fff; font: inherit; font-weight: 700; cursor: pointer;
     transition: transform .2s var(--ease), background .2s;
   }
-  .reset:hover { transform: translateY(-2px); background: #d02a2d; }
+  .reset:hover { background: #d02a2d; }
   .reset.confirming { background: #a4161a; animation: shake .35s; }
   @keyframes shake { 25% { transform: translateX(-4px); } 75% { transform: translateX(4px); } }
 
@@ -152,6 +153,7 @@
     padding: 12px 20px; border-radius: 14px; font-weight: 600; box-shadow: var(--shadow); transition: transform .4s var(--ease); z-index: 75;
   }
   #toast.show { transform: translate(-50%, 0); }
+  #toast { pointer-events: none; }   /* never block taps on whatever is underneath it */
 
   /* shows in Space World once you have enough carrots to finish */
   #endBtn {
@@ -271,7 +273,7 @@
     display: block; width: 100%; margin-top: 8px; padding: 14px; border: none; border-radius: 16px;
     font: inherit; font-weight: 700; cursor: pointer; transition: transform .2s var(--ease);
   }
-  .big-btn:hover { transform: translateY(-2px); }
+  .big-btn:hover { filter: brightness(1.06); }
   .big-btn.primary { background: var(--accent); color: #fff; }
   .big-btn.dark { background: var(--text); color: #fff; }
   .big-btn.light { background: var(--bg-soft); color: var(--text); }
@@ -313,7 +315,7 @@
     position: fixed; top: 14px; right: 16px; z-index: 12; width: 106px; border: none; background: none; padding: 0;
     cursor: pointer; font: inherit; filter: drop-shadow(0 8px 14px rgba(20, 24, 32, .2)); transition: transform .3s var(--ease);
   }
-  #questBtn:hover { transform: translateY(-2px) rotate(-2deg); }
+  #questBtn:hover { transform: scale(1.05); }
   #questBtn .awning {
     position: relative; height: 20px; border-radius: 10px 10px 3px 3px;
     background: repeating-linear-gradient(90deg, #ff5a4a 0 13px, #fff 13px 26px);
@@ -374,8 +376,8 @@
     position: relative; width: 240px; padding: 16px; border: none; border-radius: 18px; font: inherit; font-size: 20px; font-weight: 800;
     cursor: pointer; opacity: 0; animation: riseIn .6s var(--ease) forwards; transition: transform .2s var(--ease);
   }
-  .lobby-btn:hover { transform: translateY(-2px) scale(1.04); }
-  .lobby-btn:active { transform: scale(.96); }
+  .lobby-btn:hover { filter: brightness(1.06); box-shadow: 0 12px 28px rgba(255, 122, 26, .4); }
+  .lobby-btn:active { filter: brightness(.92); }
   #playBtn { background: var(--accent); color: #fff; box-shadow: 0 10px 24px rgba(255, 122, 26, .35); animation-delay: 1.35s; }
   #lobbyQuests { background: #fff; color: var(--text); box-shadow: var(--shadow); animation-delay: 1.5s; }
 
@@ -1025,6 +1027,7 @@ function bump(el) {
 }
 
 $('carrotBtn').addEventListener('pointerdown', e => {
+  if (e.button !== 0) return;   // left click / tap only (not right-click or two-finger touchpad click)
   const crit = Math.random() < critChance();
   const gain = clickValue() * (crit ? 10 : 1);
   state.carrots += gain;
@@ -1168,7 +1171,9 @@ function skinRow(s, i, kind) {
   return itemHTML({ ico, name: s.name, desc, btn, equipped, i });
 }
 
-function renderShop() {
+// animate = false redraws without the slide-in (used after buying, so the list doesn't flash)
+function renderShop(animate = true) {
+  $('list').classList.toggle('noanim', !animate);
   let html = '';
   if (tab === 'upgrades') {
     html = UPGRADES.map((u, i) => {
@@ -1610,7 +1615,7 @@ $('list').addEventListener('click', e => {
   if (kind === 'tap') tapEffect(r.left + r.width / 2, r.top + r.height / 2);
   else if (cost) burst(r.left + r.width / 2, r.top + r.height / 2);
   save();
-  renderShop();
+  renderShop(false);
   render();
 });
 
@@ -1632,7 +1637,12 @@ const openShop = () => { document.body.classList.add('shop-open'); renderShop();
 const closeShop = () => document.body.classList.remove('shop-open');
 $('shopBtn').addEventListener('click', openShop);
 $('closeShop').addEventListener('click', closeShop);
-$('scrim').addEventListener('click', closeShop);
+// tapping outside the shop closes it, except the carrot and golden carrots, which keep working while it's open
+document.addEventListener('pointerdown', e => {
+  if (!document.body.classList.contains('shop-open')) return;
+  if (e.target.closest('#shop, #shopBtn, #carrotBtn, .golden, #endModal, #lobby')) return;
+  closeShop();
+});
 addEventListener('keydown', e => { if (e.key === 'Escape') { closeShop(); closePortal(); closeQuests(); } });
 
 // ---------- daily quests: a new set every day at 6:00 AM (player's local time) ----------
@@ -1853,7 +1863,7 @@ function flyGolden({ duration = 9000, rush = false } = {}) {
   const flight = g.animate(frames, { duration, easing: 'linear' });
   flight.onfinish = () => g.remove();
   g.addEventListener('pointerdown', e => {
-    if (g.dataset.caught) return;
+    if (g.dataset.caught || e.button !== 0) return;
     g.dataset.caught = 1;
     flight.cancel();
     g.remove();
@@ -1932,7 +1942,8 @@ setInterval(save, 3000);
 addEventListener('beforeunload', save);
 // phones often close tabs without beforeunload, so also save whenever the page is hidden
 document.addEventListener('visibilitychange', () => { if (document.hidden) save(); });
-$('carrotBtn').addEventListener('contextmenu', e => e.preventDefault());
+// no right-click / long-press menu on the carrot or golden carrots
+document.addEventListener('contextmenu', e => { if (e.target.closest('#carrotBtn, .golden')) e.preventDefault(); });
 requestAnimationFrame(tick);
 </script>
 </body>
