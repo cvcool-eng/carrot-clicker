@@ -2098,6 +2098,7 @@ const SOIL_PERKS = ['', '2.5x as often · worth 1.5x', '4x as often · worth 2x 
   '5.5x as often · worth 2.5x · fly slower · sometimes come in pairs'];
 const soilFreq = () => 1 + state.golden * 1.5;
 const soilWorth = () => 1 + state.golden * .5;
+const GOLDEN_REWARD = 500;   // carrots per golden carrot, before Golden Soil
 
 let goldenTimer;
 function scheduleGolden(first) {
@@ -2169,8 +2170,9 @@ function magnetPull(g, flight, rush) {
 }
 
 function catchGolden(x, y, rush) {
-  // rush carrots are worth a quarter each, since there are so many
-  const reward = Math.max(100, perSec() * 15, clickValue() * 15) * soilWorth() / (rush ? 4 : 1);
+  // a flat amount: upgrades, skins and world bonuses don't make golden carrots worth more
+  // (only Golden Soil does). Rush carrots are worth a quarter each, since there are so many.
+  const reward = GOLDEN_REWARD * soilWorth() / (rush ? 4 : 1);
   state.carrots += reward;
   state.goldenCaught++;
   questAdd('golden', 1);
