@@ -437,6 +437,7 @@
     <span class="chip" id="goldChip">✨ <b id="goldCount" style="display:inline-block">0</b> golden</span>
     <span class="chip">⏱️ <b id="perSec">0</b> / sec</span>
     <span class="chip">✖️ <b id="multi">1x</b> multiplier</span>
+    <span class="chip" id="bestChip" title="Highscore: the most carrots you've ever had">🏆 <b id="bestChipAmount">0</b> best</span>
     <span class="chip" id="worldChip">🌾 <b id="worldName">Carrot Farm</b></span>
     <span class="chip" id="modChip" style="color:#6a2fc0;border-color:#cdb4ff" hidden>🛠️ <b style="color:#6a2fc0">Modded</b></span>
     <span class="chip" id="beatChip" style="color:#b8860b;border-color:#f2d27a" hidden>🏆 <b style="color:#b8860b">Beaten <span id="beatCount">0</span>×</b></span>
@@ -567,7 +568,7 @@
       </g>
     </svg>
     <h1>Carrot Clicker</h1>
-    <div id="bestFlex" hidden>🏆 Highscore: <b id="bestAmount">0</b> carrots</div>
+    <div id="bestFlex">🏆 Highscore: <b id="bestAmount">0</b> carrots</div>
     <button class="lobby-btn" id="playBtn">▶ Play</button>
     <button class="lobby-btn" id="lobbyQuests"><span class="qbadge" id="lobbyQBadge" hidden>0</span>📋 Quests</button>
   </div>
@@ -1046,19 +1047,20 @@ function tapEffect(x, y) {
 
 // ---------- mouse trail ----------
 let lastTrail = 0;
+let trailOffset = { x: 0, y: 0 };   // set by applyCursorSkin()
 addEventListener('pointermove', e => {
   const t = TRAILS.find(k => k.id === state.trailSkin);
   if (!t || t.id === 'none') return;
   if (t.line) {   // line trails just record the point; drawLineTrail() draws them every frame
     const j = t.line.jitter || 0;
-    linePts.push({ x: e.clientX + rnd(-j, j), y: e.clientY + rnd(-j, j), t: performance.now() });
+    linePts.push({ x: e.clientX + trailOffset.x + rnd(-j, j), y: e.clientY + trailOffset.y + rnd(-j, j), t: performance.now() });
     lineCfg = t.line;
     return;
   }
   const style = TRAIL_STYLES[t.style] || (t.emoji ? TRAIL_STYLES.emoji : TRAIL_STYLES.dot);
   const now = performance.now();
   if (now - lastTrail < style.gap) return;
-  const made = style.make(e.clientX, e.clientY, t);
+  const made = style.make(e.clientX + trailOffset.x, e.clientY + trailOffset.y, t);
   if (!made) return;
   lastTrail = now;
   const [el, frames, opts] = made;
@@ -1269,6 +1271,8 @@ function applyCursorSkin() {
     : s.arrow ? crispCursor(k => svgURL(arrowSvg(s.arrow, 32 * k, s.grad)), 5, 3)
     : s.pixel ? crispCursor(k => svgURL(pixelArrowSvg(2 * k, pixelColors)), 1, 1)
     : s.hat ? hatBunnyCursor(s.hat, s.tint) : null;
+  // trails start from the middle of the cursor picture, not its clicking tip (which is at its top-left)
+  trailOffset = s.emoji ? { x: 10, y: 16 } : s.arrow ? { x: 7, y: 11 } : s.pixel ? { x: 5, y: 10 } : s.hat ? { x: 10, y: 13 } : { x: 0, y: 0 };
   html.classList.toggle('custom-cursor', !!cursor);
   if (cursor) html.style.setProperty('--cursor', cursor);
 }
@@ -1983,7 +1987,7 @@ function setHidden(el, hidden) { if (el.hidden !== hidden) el.hidden = hidden; }
 function render() {
   // best-ever record for the lobby (modded mode's free carrots don't count)
   if (!state.modded && state.carrots > state.bestCarrots) state.bestCarrots = state.carrots;
-  setHidden($('bestFlex'), state.bestCarrots < 1);
+  setText($('bestChipAmount'), fmt(state.bestCarrots));
   setText($('bestAmount'), fmt(state.bestCarrots));
   const amount = fmt(state.carrots), word = Math.floor(state.carrots) === 1 ? 'carrot' : 'carrots';
   setText($('carrots').firstChild, amount);
