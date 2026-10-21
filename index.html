@@ -591,9 +591,12 @@ const CARROT_SKINS = [
 ];
 
 // a bunny wearing a little hat, for shop icons
-const hatBunnyIcon = hat => '<span style="position:relative;display:inline-block;line-height:1">🐰' +
-  `<span style="position:absolute;left:50%;top:-.18em;transform:translateX(-50%) rotate(-12deg);font-size:.55em">${hat}</span></span>`;
+// tint = optional color filter for the hat (the Queen's crown is the King's crown turned rose pink)
+const QUEEN_TINT = 'hue-rotate(290deg) saturate(1.4) brightness(1.05)';
+const hatBunnyIcon = (hat, tint = 'none') => '<span style="position:relative;display:inline-block;line-height:1">🐰' +
+  `<span style="position:absolute;left:50%;top:-.18em;transform:translateX(-50%) rotate(-12deg);font-size:.55em;filter:${tint}">${hat}</span></span>`;
 const CROWNED_BUNNY = hatBunnyIcon('👑');
+const QUEEN_BUNNY = hatBunnyIcon('👑', QUEEN_TINT);
 const HAT_BUNNY = hatBunnyIcon('🎩');
 
 // an old-school pixel-art arrow pointer (B = black outline, W = white fill)
@@ -636,6 +639,7 @@ const CURSOR_SKINS = [
   { id: 'dragon',  name: 'Dragon',   cost: 2e7,    emoji: '🐉' },
   { id: 'diamond', name: 'Diamond',  cost: 1e8,    emoji: '💎' },
   { id: 'galaxy',  name: 'Galaxy Pointer', cost: 3e8, arrow: '#7b3fe0', grad: ['#2a2f8a', '#ff5fd1'], icon: arrowSvg('#7b3fe0', 32, ['#2a2f8a', '#ff5fd1']) },
+  { id: 'queen',   name: 'Queen Bunny', cost: 1e8, hat: '👑', tint: QUEEN_TINT, icon: QUEEN_BUNNY },
   { id: 'king',    name: 'King Bunny', cost: 1e9, hat: '👑', icon: CROWNED_BUNNY },   // always the most expensive
   // secret: only shows in the shop once earned by beating the game ADMIN_WINS times
   { id: 'admin',   name: 'The Admin Bunny', secret: true, hat: '🎩', icon: HAT_BUNNY },
@@ -1245,13 +1249,14 @@ function emojiCursor(emoji) {
   }), 10, 6);
 }
 // a bunny emoji wearing a hat emoji (crown or top hat), drawn as a cursor
-function hatBunnyCursor(hat) {
-  return cursorCache[hat + 'bunny'] ??= crispCursor(s => canvasURL(48, s, x => {
+function hatBunnyCursor(hat, tint = 'none') {
+  return cursorCache[hat + tint + 'bunny'] ??= crispCursor(s => canvasURL(48, s, x => {
     x.font = `30px ${FONT}`;
     x.fillText('🐰', 22, 30);
     x.translate(23, 18);   // hat rests right on top of the head
     x.rotate(-.2);
     x.font = `17px ${FONT}`;
+    x.filter = tint;
     x.fillText(hat, 0, 0);
   }), 12, 14);
 }
@@ -1263,7 +1268,7 @@ function applyCursorSkin() {
   const cursor = s.emoji ? emojiCursor(s.emoji)
     : s.arrow ? crispCursor(k => svgURL(arrowSvg(s.arrow, 32 * k, s.grad)), 5, 3)
     : s.pixel ? crispCursor(k => svgURL(pixelArrowSvg(2 * k, pixelColors)), 1, 1)
-    : s.hat ? hatBunnyCursor(s.hat) : null;
+    : s.hat ? hatBunnyCursor(s.hat, s.tint) : null;
   html.classList.toggle('custom-cursor', !!cursor);
   if (cursor) html.style.setProperty('--cursor', cursor);
 }
@@ -1741,10 +1746,11 @@ onPress($('list'), e => {
     const u = UPGRADES.find(x => x.key === id);
     state[id]++;
     questAdd('buys', 1);
+    if (id === 'autos') questAdd('autobuys', 1);
     if (u.after) u.after();
     toast(typeof u.toast === 'function' ? u.toast() : u.toast);
   } else {
-    if (verb === 'skin') { state[kind + 'Skins'].push(id); toast(SKIN_TOAST[kind]); }
+    if (verb === 'skin') { state[kind + 'Skins'].push(id); toast(SKIN_TOAST[kind]); questAdd('cosmetics', 1); }
     state[kind + 'Skin'] = id;
     if (kind === 'carrot') applyCarrotSkin();
     if (kind === 'cursor') applyCursorSkin();
@@ -1789,20 +1795,23 @@ addEventListener('keydown', e => { if (e.key === 'Escape') { closeShop(); closeP
 
 // ---------- daily quests: a new set every day at 6:00 AM (player's local time) ----------
 const QUEST_POOL = [
-  { id: 'click1k',  icon: '👆', text: 'Click the carrot 1,000 times',            stat: 'clicks',  goal: 1000, reward: 300000 },
-  { id: 'click3k',  icon: '👆', text: 'Click the carrot 3,000 times',            stat: 'clicks',  goal: 3000, reward: 1e6 },
-  { id: 'gold5',    icon: '✨', text: 'Catch 5 golden carrots',                   stat: 'golden',  goal: 5,    reward: 500000 },
-  { id: 'gold15',   icon: '✨', text: 'Catch 15 golden carrots',                  stat: 'golden',  goal: 15,   reward: 2e6 },
-  { id: 'crit50',   icon: '🍀', text: 'Land 50 CRIT clicks',                      stat: 'crits',   goal: 50,   reward: 750000 },
-  { id: 'crit200',  icon: '🍀', text: 'Land 200 CRIT clicks',                     stat: 'crits',   goal: 200,  reward: 2.5e6 },
-  { id: 'earn10m',  icon: '🥕', text: 'Earn 10M carrots',                         stat: 'earned',  goal: 1e7,  reward: 1.5e6 },
-  { id: 'earn500m', icon: '🥕', text: 'Earn 500M carrots',                        stat: 'earned',  goal: 5e8,  reward: 5e7 },
-  { id: 'buy15',    icon: '🛒', text: 'Buy 15 upgrades',                          stat: 'buys',    goal: 15,   reward: 400000 },
-  { id: 'travel3',  icon: '🌀', text: 'Travel through the Carrot Portal 3 times', stat: 'travels', goal: 3,    reward: 600000 },
-  { id: 'rush1',    icon: '🌟', text: 'Start a Golden Rush',                      stat: 'rushes',  goal: 1,    reward: 3e6 },
-  { id: 'play20',   icon: '⏱️', text: 'Play for 20 minutes',                      stat: 'seconds', goal: 1200, reward: 800000 },
+  { id: 'click1k',  icon: '👆', text: 'Click the carrot 1,000 times',            stat: 'clicks',    goal: 1000, reward: 150000 },
+  { id: 'click3k',  icon: '👆', text: 'Click the carrot 3,000 times',            stat: 'clicks',    goal: 3000, reward: 500000 },
+  { id: 'gold5',    icon: '✨', text: 'Catch 5 golden carrots',                   stat: 'golden',    goal: 5,    reward: 250000 },
+  { id: 'gold15',   icon: '✨', text: 'Catch 15 golden carrots',                  stat: 'golden',    goal: 15,   reward: 1e6 },
+  { id: 'crit50',   icon: '🍀', text: 'Land 50 CRIT clicks',                      stat: 'crits',     goal: 50,   reward: 400000 },
+  { id: 'crit200',  icon: '🍀', text: 'Land 200 CRIT clicks',                     stat: 'crits',     goal: 200,  reward: 1.2e6 },
+  { id: 'earn10m',  icon: '🥕', text: 'Earn 10M carrots',                         stat: 'earned',    goal: 1e7,  reward: 750000 },
+  { id: 'earn500m', icon: '🥕', text: 'Earn 500M carrots',                        stat: 'earned',    goal: 5e8,  reward: 2e7 },
+  { id: 'buy15',    icon: '🛒', text: 'Buy 15 upgrades',                          stat: 'buys',      goal: 15,   reward: 200000 },
+  { id: 'travel3',  icon: '🌀', text: 'Travel through the Carrot Portal 3 times', stat: 'travels',   goal: 3,    reward: 300000 },
+  { id: 'rush1',    icon: '🌟', text: 'Start a Golden Rush',                      stat: 'rushes',    goal: 1,    reward: 1.5e6 },
+  { id: 'play20',   icon: '⏱️', text: 'Play for 20 minutes',                      stat: 'seconds',   goal: 1200, reward: 400000 },
+  { id: 'cosmetic2',icon: '🎨', text: 'Buy 2 cosmetics (skins, cursors, trails or taps)', stat: 'cosmetics', goal: 2, reward: 300000 },
+  { id: 'egg1',     icon: '🥚', text: 'Find a flashing green carrot in the lobby', stat: 'eggs',     goal: 1,    reward: 250000 },
+  { id: 'auto5',    icon: '🖱️', text: 'Buy 5 Auto Clickers',                      stat: 'autobuys',  goal: 5,    reward: 250000 },
 ];
-const QUESTS_PER_DAY = 4;
+const QUESTS_PER_DAY = 7;
 const RESET_HOUR = 6;
 
 // "quest day" changes at 6 AM instead of midnight: shift the clock back 6 hours before reading the date
@@ -1943,6 +1952,7 @@ setTimeout(spawnEggCarrot, rnd(3000, 6000));   // the first chance comes a few s
 // there are 3 easter eggs (Alien cursor, Matrix trail, Party Explosion). New ones come first;
 // once you have all 3, more green carrots just give you one of them again.
 function giveEgg() {
+  questAdd('eggs', 1);
   const all = Object.entries(EGG_KINDS).flatMap(([kind, list]) => list.filter(s => s.egg).map(item => [kind, item]));
   const missing = all.filter(([kind, item]) => !state[kind + 'Skins'].includes(item.id));
   const pool = missing.length ? missing : all;
