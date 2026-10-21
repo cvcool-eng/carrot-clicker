@@ -23,7 +23,10 @@
     background: var(--world-bg, radial-gradient(circle at 50% 45%, #fff 0%, var(--bg-soft) 75%)); overflow: hidden;
     user-select: none; -webkit-user-select: none; -webkit-touch-callout: none; touch-action: manipulation;
   }
-  button { -webkit-tap-highlight-color: transparent; }
+  /* no blue tap flash / text selection on phones */
+  * { -webkit-tap-highlight-color: transparent; }
+  ::selection { background: transparent; }
+  button:focus:not(:focus-visible) { outline: none; }
   html.custom-cursor, html.custom-cursor * { cursor: var(--cursor) !important; }
 
   /* ---------- stats ---------- */
@@ -92,8 +95,8 @@
   .shop-head { display: flex; align-items: center; justify-content: space-between; padding: 20px 20px 8px; }
   .shop-head h2 { margin: 0; font-size: 22px; }
   .shop-head .bal { color: var(--muted); font-size: 14px; margin-top: 2px; }
-  #closeShop, #closePortal { border: none; background: var(--bg-soft); width: 36px; height: 36px; border-radius: 50%; font-size: 18px; cursor: pointer; transition: transform .2s var(--ease), background .2s; }
-  #closeShop:hover, #closePortal:hover { transform: rotate(90deg); background: var(--line); }
+  #closeShop, #closePortal, #closeQuests { border: none; background: var(--bg-soft); width: 36px; height: 36px; border-radius: 50%; font-size: 18px; cursor: pointer; transition: transform .2s var(--ease), background .2s; }
+  #closeShop:hover, #closePortal:hover, #closeQuests:hover { transform: rotate(90deg); background: var(--line); }
 
   .tabs { display: flex; gap: 6px; margin: 8px 20px 4px; padding: 4px; background: var(--bg-soft); border-radius: 14px; position: relative; }
   .tab { flex: 1; border: none; background: none; font: inherit; font-weight: 600; font-size: 13px; color: var(--muted); padding: 9px 4px; border-radius: 10px; cursor: pointer; position: relative; z-index: 1; transition: color .2s; }
@@ -146,7 +149,7 @@
 
   #toast {
     position: fixed; left: 50%; bottom: 28px; transform: translate(-50%, 120px); background: var(--text); color: #fff;
-    padding: 12px 20px; border-radius: 14px; font-weight: 600; box-shadow: var(--shadow); transition: transform .4s var(--ease); z-index: 30;
+    padding: 12px 20px; border-radius: 14px; font-weight: 600; box-shadow: var(--shadow); transition: transform .4s var(--ease); z-index: 75;
   }
   #toast.show { transform: translate(-50%, 0); }
 
@@ -177,12 +180,12 @@
 
   #portalScrim { position: fixed; inset: 0; background: rgba(20,24,32,.3); opacity: 0; pointer-events: none; transition: opacity .3s; z-index: 21; }
   body.portal-open #portalScrim { opacity: 1; pointer-events: auto; }
-  #portal {
+  #portal, #questPanel {
     position: fixed; left: 50%; top: 50%; z-index: 22; width: min(460px, calc(100vw - 24px)); max-height: calc(100vh - 40px);
     background: #fff; border-radius: 24px; box-shadow: 0 20px 60px rgba(20,24,32,.25); display: flex; flex-direction: column;
     transform: translate(-50%, -50%) scale(.9); opacity: 0; pointer-events: none; transition: transform .35s var(--ease), opacity .25s;
   }
-  body.portal-open #portal { transform: translate(-50%, -50%) scale(1); opacity: 1; pointer-events: auto; }
+  body.portal-open #portal, body.quests-open #questPanel { transform: translate(-50%, -50%) scale(1); opacity: 1; pointer-events: auto; }
   .world-ico { width: 100%; height: 100%; border-radius: 14px; display: grid; place-items: center; }
 
   #warp {
@@ -196,6 +199,8 @@
   body.world-water  { --world-bg: radial-gradient(circle at 50% 40%, #effaff 0%, #a6dcf5 55%, #4fa9d9 100%); --hud: #0d3b57; }
   body.world-lava   { --world-bg: radial-gradient(circle at 50% 45%, #6b200f 0%, #2e0a05 65%, #150302 100%); --hud: #fff; --hud-shadow: 0 2px 16px rgba(255,100,20,.6); }
   body.world-jungle { --world-bg: radial-gradient(circle at 50% 40%, #f0f9e6 0%, #acdc8e 55%, #4a9437 100%); --hud: #1f3d17; }
+  body.world-candy  { --world-bg: radial-gradient(circle at 50% 40%, #fff3f9 0%, #ffc6e4 55%, #ff8cc6 100%); --hud: #6b1446; }
+  body.world-arctic { --world-bg: radial-gradient(circle at 50% 40%, #ffffff 0%, #dcf2ff 55%, #9fd0ef 100%); --hud: #0d3b57; }
   body.world-space  { --world-bg: radial-gradient(circle at 50% 40%, #1d2256 0%, #0b0d26 60%, #03040d 100%); --hud: #fff; --hud-shadow: 0 2px 16px rgba(120,140,255,.6); }
   #ambient { position: fixed; inset: 0; pointer-events: none; overflow: hidden; }
   #ambient > div { position: absolute; }
@@ -228,7 +233,114 @@
   .big-btn.dark { background: var(--text); color: #fff; }
   .big-btn.light { background: var(--bg-soft); color: var(--text); }
 
+  /* ---------- carrot skin effects ---------- */
+  .rays {
+    position: absolute; left: 50%; top: 50%; width: 380px; height: 380px; margin: -190px 0 0 -190px;
+    border-radius: 50%; pointer-events: none; opacity: 0; transition: opacity .5s;
+    background: repeating-conic-gradient(rgba(255, 236, 160, .6) 0 7deg, transparent 7deg 22deg);
+    -webkit-mask: radial-gradient(circle, #000 18%, transparent 68%); mask: radial-gradient(circle, #000 18%, transparent 68%);
+    animation: spin 26s linear infinite;
+  }
+  .skin-heavenly .rays { opacity: 1; }
+  .skin-golden .rays { opacity: .45; }
+  #wings, #halo, #icicles, #drips { display: none; }
+  .skin-heavenly #wings, .skin-heavenly #halo, .skin-ice #icicles, .skin-ice #drips { display: inline; }
+  #wingL, #wingR { transform-box: fill-box; animation: flapL 1.6s ease-in-out infinite; }
+  #wingL { transform-origin: 100% 45%; }
+  #wingR { transform-origin: 0% 45%; animation-name: flapR; }
+  @keyframes flapL { 50% { transform: rotate(-16deg); } }
+  @keyframes flapR { 50% { transform: rotate(16deg); } }
+  #halo { transform-box: fill-box; animation: haloFloat 2.4s ease-in-out infinite; filter: drop-shadow(0 0 6px #ffd84d); }
+  @keyframes haloFloat { 50% { transform: translateY(-6px); } }
+  #drips circle { transform-box: fill-box; animation: drip 1.9s ease-in infinite; }
+  @keyframes drip {
+    0% { transform: translateY(0) scale(.3); opacity: 0; } 20% { transform: translateY(0) scale(1); opacity: 1; }
+    85% { opacity: 1; } 100% { transform: translateY(80px) scale(1); opacity: 0; }
+  }
+  /* every skin except Classic glows and pulses in its own color */
+  .skin-golden { --glow: rgba(255, 205, 50, .85); }   .skin-purple { --glow: rgba(165, 95, 255, .85); }
+  .skin-frozen { --glow: rgba(120, 210, 255, .85); }  .skin-midnight { --glow: rgba(110, 120, 255, .8); }
+  .skin-ice { --glow: rgba(150, 220, 255, .9); }      .skin-heavenly { --glow: rgba(255, 240, 170, 1); }
+  .fxskin #carrotBtn svg { filter: drop-shadow(0 0 14px var(--glow)); animation: pulseGlow 2.2s ease-in-out infinite; }
+  @keyframes pulseGlow { 50% { filter: drop-shadow(0 0 30px var(--glow)); } }
+  .skinfx { position: absolute; pointer-events: none; line-height: 1; }
+
+  /* ---------- daily quests stand (top right) ---------- */
+  #questBtn {
+    position: fixed; top: 14px; right: 16px; z-index: 12; width: 106px; border: none; background: none; padding: 0;
+    cursor: pointer; font: inherit; filter: drop-shadow(0 8px 14px rgba(20, 24, 32, .2)); transition: transform .3s var(--ease);
+  }
+  #questBtn:hover { transform: translateY(-2px) rotate(-2deg); }
+  #questBtn .awning {
+    position: relative; height: 20px; border-radius: 10px 10px 3px 3px;
+    background: repeating-linear-gradient(90deg, #ff5a4a 0 13px, #fff 13px 26px);
+  }
+  #questBtn .awning::after {    /* scalloped edge */
+    content: ''; position: absolute; left: 0; right: 0; bottom: -6px; height: 7px;
+    background: radial-gradient(circle at 6.5px 0, #ff5a4a 6.5px, transparent 7px) 0 0 / 26px 7px repeat-x,
+                radial-gradient(circle at 6.5px 0, #fff 6.5px, transparent 7px) 13px 0 / 26px 7px repeat-x;
+  }
+  #questBtn .posts { height: 10px; margin: 0 9px; border-left: 4px solid #a06a3a; border-right: 4px solid #a06a3a; }
+  #questBtn .counter {
+    background: linear-gradient(#bd7f45, #8b5a2b); border-radius: 6px 6px 10px 10px; padding: 5px 4px 7px;
+    color: #fff; font-weight: 800; font-size: 12px; line-height: 1.15; text-shadow: 0 1px 0 rgba(0, 0, 0, .25);
+    box-shadow: inset 0 2px 0 rgba(255, 255, 255, .2);
+  }
+  #questBtn .counter span { display: block; font-size: 17px; }
+  .qbadge {
+    position: absolute; top: -8px; left: -8px; min-width: 22px; height: 22px; padding: 0 6px; border-radius: 11px; z-index: 1;
+    background: #e5383b; color: #fff; font-size: 12px; font-weight: 800; display: grid; place-items: center;
+    border: 2px solid #fff; animation: qpop 1.2s ease-in-out infinite;
+  }
+  .qbadge[hidden] { display: none; }
+  @keyframes qpop { 50% { transform: scale(1.15); } }
+  body.shop-open #questBtn, body.portal-open #questBtn, body.quests-open #questBtn { opacity: 0; pointer-events: none; }
+  #questScrim { position: fixed; inset: 0; z-index: 69; background: rgba(20,24,32,.3); opacity: 0; pointer-events: none; transition: opacity .3s; }
+  body.quests-open #questScrim { opacity: 1; pointer-events: auto; }
+  #questPanel { z-index: 70; }
+  .qbar { height: 8px; border-radius: 4px; background: var(--bg-soft); overflow: hidden; margin: 6px 0 3px; }
+  .qbar i { display: block; height: 100%; border-radius: 4px; background: linear-gradient(90deg, #ffb347, #ff7a1a); transition: width .3s; }
+  .item.qdone .qbar i { background: linear-gradient(90deg, #5fd36a, #2fb36b); }
+
+  /* ---------- lobby ---------- */
+  #lobby {
+    position: fixed; inset: 0; z-index: 60; display: grid; place-items: center; overflow: hidden;
+    background: radial-gradient(circle at 50% 40%, #fff8f0 0%, #ffe4c8 60%, #ffc792 100%);
+    transition: opacity .6s, transform .6s var(--ease);
+  }
+  #lobby.hide { opacity: 0; transform: scale(1.08); pointer-events: none; }
+  #lobbyBg span { position: absolute; top: 0; font-size: 26px; opacity: .22; animation: lobbyFloat linear infinite; }
+  @keyframes lobbyFloat { from { transform: translateY(110vh) rotate(0deg); } to { transform: translateY(-15vh) rotate(360deg); } }
+  .lobby-inner { position: relative; display: flex; flex-direction: column; align-items: center; gap: 12px; padding: 16px; text-align: center; }
+  .lobby-carrot { width: 150px; height: 195px; overflow: visible; animation: lobbyBob 3s ease-in-out 2.2s infinite; }
+  .lobby-carrot .draw {
+    fill-opacity: 0; stroke-dasharray: 1; stroke-dashoffset: 1;
+    animation: draw 1.2s ease var(--d) forwards, fillIn .5s ease calc(var(--d) + .9s) forwards;
+  }
+  @keyframes draw { to { stroke-dashoffset: 0; } }
+  @keyframes fillIn { to { fill-opacity: 1; } }
+  @keyframes lobbyBob { 50% { transform: translateY(-10px) rotate(4deg); } }
+  #lobby h1 {
+    margin: 4px 0 10px; font-size: clamp(42px, 10vw, 76px); font-weight: 900; letter-spacing: -.03em; line-height: 1;
+    background: linear-gradient(135deg, #ff9a3c, #e8550a); -webkit-background-clip: text; background-clip: text; color: transparent;
+    opacity: 0; animation: riseIn .7s var(--ease) 1.1s forwards;
+  }
+  @keyframes riseIn { from { opacity: 0; translate: 0 18px; } to { opacity: 1; translate: 0 0; } }
+  .lobby-btn {
+    position: relative; width: 240px; padding: 16px; border: none; border-radius: 18px; font: inherit; font-size: 20px; font-weight: 800;
+    cursor: pointer; opacity: 0; animation: riseIn .6s var(--ease) forwards; transition: transform .2s var(--ease);
+  }
+  .lobby-btn:hover { transform: translateY(-2px) scale(1.04); }
+  .lobby-btn:active { transform: scale(.96); }
+  #playBtn { background: var(--accent); color: #fff; box-shadow: 0 10px 24px rgba(255, 122, 26, .35); animation-delay: 1.35s; }
+  #lobbyQuests { background: #fff; color: var(--text); box-shadow: var(--shadow); animation-delay: 1.5s; }
+
   @media (max-width: 600px) {
+    #questBtn { width: 80px; top: 8px; right: 8px; }
+    header { top: 92px; }                  /* leave room for the quest stand above the counter */
+    .carrot-wrap { margin-top: 170px; }
+    #questBtn .counter { font-size: 10px; }
+    #questBtn .counter span { font-size: 14px; }
     #shopBtn { top: auto; bottom: 20px; transform: none; flex-direction: row; padding: 14px 20px; }
     #shopBtn:hover { transform: scale(1.04); }
     body.shop-open #shopBtn { transform: translateX(40px); }
@@ -255,6 +367,7 @@
 
 <main>
   <div class="carrot-wrap" id="wrap">
+    <div class="rays"></div>
     <div class="shadow"></div>
     <button id="carrotBtn" aria-label="Click the carrot">
       <svg viewBox="0 0 200 260" aria-hidden="true">
@@ -269,6 +382,11 @@
           </linearGradient>
         </defs>
         <g transform="rotate(-20 100 130)">
+        <!-- Heavenly skin: angel wings behind the carrot -->
+        <g id="wings" fill="#fff" stroke="#dde3f3" stroke-width="2" stroke-linejoin="round">
+          <path id="wingL" d="M58 108 C 30 82, 2 90, 0 116 C 13 111, 20 118, 13 128 C 26 123, 32 130, 25 141 C 40 137, 50 130, 58 122 Z"/>
+          <path id="wingR" d="M142 108 C 170 82, 198 90, 200 116 C 187 111, 180 118, 187 128 C 174 123, 168 130, 175 141 C 160 137, 150 130, 142 122 Z"/>
+        </g>
         <!-- leaves -->
         <g fill="url(#leafGrad)">
           <path d="M100 62 C 70 50, 52 20, 62 6 C 82 12, 98 36, 100 62 Z"/>
@@ -287,6 +405,19 @@
           <!-- shine -->
           <path d="M66 84 C 70 74, 84 70, 92 72" stroke="#fff" stroke-width="7" stroke-linecap="round" fill="none" opacity=".5"/>
         </g>
+        <!-- Ice skin: frosty cap, icicles and dripping water -->
+        <g id="icicles">
+          <path d="M50 80 C 62 64, 138 64, 150 80 C 140 87, 128 82, 118 89 C 108 82, 96 91, 86 86 C 76 91, 62 85, 50 80 Z" fill="#eefaff"/>
+          <path d="M60 84 l5 22 l5 -20 Z M79 88 l4 30 l4 -29 Z M99 89 l5 19 l5 -19 Z M119 88 l4 27 l4 -27 Z M137 84 l4 17 l4 -16 Z"
+                fill="#c9eeff" stroke="#8fd3f4" stroke-width="1.2" stroke-linejoin="round"/>
+        </g>
+        <g id="drips" fill="#6cc0f0">
+          <circle cx="83" cy="120" r="3.2"/>
+          <circle cx="123" cy="116" r="2.8" style="animation-delay:.7s"/>
+          <circle cx="65" cy="108" r="2.6" style="animation-delay:1.2s"/>
+        </g>
+        <!-- Heavenly skin: halo -->
+        <ellipse id="halo" cx="100" cy="-8" rx="30" ry="8" fill="none" stroke="#ffd84d" stroke-width="5"/>
         </g>
       </svg>
     </button>
@@ -326,6 +457,42 @@
 <div id="endModal"><div class="end-card" id="endCard"></div></div>
 <div id="warp"></div>
 
+<button id="questBtn" aria-label="Daily Quests">
+  <span class="qbadge" id="qBadge" hidden>0</span>
+  <div class="awning"></div><div class="posts"></div>
+  <div class="counter"><span>📋</span>Daily Quests</div>
+</button>
+<div id="questScrim"></div>
+<div id="questPanel" role="dialog" aria-label="Daily Quests">
+  <div class="shop-head">
+    <div><h2>📋 Daily Quests</h2><div class="bal" id="questTimer">New quests every day at 6:00 AM</div></div>
+    <button id="closeQuests" aria-label="Close quests">✕</button>
+  </div>
+  <div class="list" id="questList"></div>
+</div>
+
+<div id="lobby">
+  <div id="lobbyBg"></div>
+  <div class="lobby-inner">
+    <svg class="lobby-carrot" viewBox="0 0 200 260" aria-hidden="true">
+      <g transform="rotate(-15 100 130)" stroke-linecap="round" stroke-linejoin="round" stroke-width="5">
+        <path class="draw" pathLength="1" style="--d:0s" fill="#5fd36a" stroke="#2f8f3e" d="M100 62 C 70 50, 52 20, 62 6 C 82 12, 98 36, 100 62 Z"/>
+        <path class="draw" pathLength="1" style="--d:.15s" fill="#5fd36a" stroke="#2f8f3e" d="M100 62 C 130 50, 148 20, 138 6 C 118 12, 102 36, 100 62 Z"/>
+        <path class="draw" pathLength="1" style="--d:.3s" fill="#4cc35a" stroke="#2f8f3e" d="M100 64 C 88 40, 90 12, 100 0 C 110 12, 112 40, 100 64 Z"/>
+        <path class="draw" pathLength="1" style="--d:.35s" fill="#ff8a2b" stroke="#c94f00"
+              d="M52 78 C 60 58, 140 58, 148 78 C 156 98, 130 170, 108 238 C 104 250, 96 250, 92 238 C 70 170, 44 98, 52 78 Z"/>
+        <path class="draw" pathLength="1" style="--d:1.1s" fill="none" stroke="#c94f00" d="M64 140 q 12 4 22 0"/>
+        <path class="draw" pathLength="1" style="--d:1.2s" fill="none" stroke="#c94f00" d="M120 162 q 10 3 18 -2"/>
+        <path class="draw" pathLength="1" style="--d:1.3s" fill="none" stroke="#c94f00" d="M84 196 q 9 3 16 0"/>
+        <path class="draw" pathLength="1" style="--d:1.4s" fill="none" stroke="#fff" opacity=".6" d="M66 84 C 70 74, 84 70, 92 72"/>
+      </g>
+    </svg>
+    <h1>Carrot Clicker</h1>
+    <button class="lobby-btn" id="playBtn">▶ Play</button>
+    <button class="lobby-btn" id="lobbyQuests"><span class="qbadge" id="lobbyQBadge" hidden>0</span>📋 Quests</button>
+  </div>
+</div>
+
 <div id="toast"></div>
 <div id="goldTint"></div>
 
@@ -337,6 +504,9 @@ const CARROT_SKINS = [
   { id: 'purple',  name: 'Purple',   cost: 15000,  boost: 3,  b1: '#c890ff', b2: '#8040e0', ridge: '#6a2fc0', l1: '#5fd36a', l2: '#3aa84a' },
   { id: 'frozen',  name: 'Frozen',   cost: 40000,  boost: 5,  b1: '#e3f6ff', b2: '#7cc8f2', ridge: '#4ea6d6', l1: '#b4f0e8', l2: '#6bcfc0' },
   { id: 'midnight',name: 'Midnight', cost: 100000, boost: 10, b1: '#5a5f8a', b2: '#23263f', ridge: '#11131f', l1: '#7a86ff', l2: '#4450d8' },
+  // these two are a normal orange carrot with extras drawn on (see #icicles/#drips and #wings/#halo)
+  { id: 'ice',     name: 'Ice Carrot',      cost: 1e6, boost: 15, badge: '🧊', b1: '#ffa95c', b2: '#f26a10', ridge: '#cc5500', l1: '#8fe0d8', l2: '#4fb8b0' },
+  { id: 'heavenly',name: 'Heavenly Carrot', cost: 1e7, boost: 25, badge: '😇', b1: '#ffb36b', b2: '#f2761a', ridge: '#d06010', l1: '#7de08a', l2: '#4cc35a' },
 ];
 
 // a bunny wearing a little hat, for shop icons
@@ -373,8 +543,8 @@ const CURSOR_SKINS = [
   { id: 'carrot',  name: 'Carrot',   cost: 6000,  emoji: '🥕' },
   { id: 'bunny',   name: 'Bunny',    cost: 20000,  emoji: '🐰' },
   { id: 'crown',   name: 'Crown',    cost: 75000, emoji: '👑' },
-  { id: 'king',    name: 'King Bunny', cost: 1000000, hat: '👑', icon: CROWNED_BUNNY },
-  // secret: only shows in the shop once earned by beating the game 3 times
+  { id: 'king',    name: 'King Bunny', cost: 1e9, hat: '👑', icon: CROWNED_BUNNY },
+  // secret: only shows in the shop once earned by beating the game ADMIN_WINS times
   { id: 'admin',   name: 'The Admin Bunny', secret: true, hat: '🎩', icon: HAT_BUNNY },
 ];
 
@@ -385,27 +555,45 @@ const TRAILS = [
   { id: 'comet',   name: 'Comet',        cost: 6000,   icon: '☄️', style: 'comet' },
   { id: 'smoke',   name: 'Smoke',        cost: 12000,  icon: '💨', style: 'smoke' },
   { id: 'stars',   name: 'Stardust',     cost: 20000,  icon: '⭐', emoji: '⭐' },
+  { id: 'fire',    name: 'Fire',         cost: 50000,  icon: '🔥', style: 'fire' },
+  { id: 'neon',    name: 'Neon',         cost: 80000,  icon: '💡', style: 'neon' },
+  { id: 'snow',    name: 'Snowfall',     cost: 120000, icon: '❄️', emoji: '❄️' },
   { id: 'carrots', name: 'Carrot Trail', cost: 150000, icon: '🥕', emoji: '🥕' },
+  { id: 'sparks',  name: 'Electric Sparks', cost: 300000, icon: '⚡', style: 'sparks' },
+  { id: 'shadow',  name: 'Admin Shadow', secret: true, icon: '🖤', style: 'shadow' },
 ];
 
 const TAPS = [
   { id: 'ripple',   name: 'Ripple',           cost: 0,      icon: '⭕' },
   { id: 'stars',    name: 'Star Pop',         cost: 15000,  icon: '🌟' },
+  { id: 'pixels',   name: 'Pixel Burst',      cost: 25000,  icon: '👾' },
   { id: 'carrots',  name: 'Carrot Explosion', cost: 40000,  icon: '🥕' },
+  { id: 'shockwave',name: 'Shockwave',        cost: 60000,  icon: '💫' },
   { id: 'firework', name: 'Firework',         cost: 100000, icon: '🎆' },
+  { id: 'lightning',name: 'Lightning',        cost: 250000, icon: '⚡' },
+  { id: 'galaxy',   name: 'Galaxy Swirl',     cost: 750000, icon: '🌌' },
+  { id: 'tophats',  name: 'Admin Top Hats',   secret: true, icon: '🎩' },
 ];
+
+// everything The Admin Bunny unlocks, and how many wins it takes
+const ADMIN_WINS = 10;
+const ADMIN_ITEMS = { cursor: 'admin', tap: 'tophats', trail: 'shadow' };
 
 // Carrot Portal worlds, unlocked in order; the current world multiplies all carrots
 const WORLDS = [
   { id: 'normal', name: 'Carrot Farm',  emoji: '🌾', cost: 0,       boost: 1,  desc: 'Where it all began',
     bg: 'linear-gradient(160deg, #ffffff, #e9ecf1)' },
-  { id: 'water',  name: 'Water World',  emoji: '🌊', cost: 30000,   boost: 2,  desc: 'Bubbles rise all around you',
+  { id: 'water',  name: 'Water World',  emoji: '🌊', cost: 50000,  boost: 2,  desc: 'Bubbles rise all around you',
     bg: 'linear-gradient(160deg, #e9f8ff, #4fa9d9)' },
-  { id: 'lava',   name: 'Lava World',   emoji: '🌋', cost: 50000,   boost: 3,  desc: 'Hot embers float up from below',
+  { id: 'lava',   name: 'Lava World',   emoji: '🌋', cost: 200000, boost: 3,  desc: 'Hot embers float up from below',
     bg: 'linear-gradient(160deg, #ff8a3c, #4a1208)' },
-  { id: 'jungle', name: 'Jungle World', emoji: '🌴', cost: 100000,  boost: 5,  desc: 'Leaves drift down from the trees',
+  { id: 'jungle', name: 'Jungle World', emoji: '🌴', cost: 1e6,    boost: 5,  desc: 'Leaves drift down from the trees',
     bg: 'linear-gradient(160deg, #eaf7df, #4a9437)' },
-  { id: 'space',  name: 'Space World',  emoji: '🚀', cost: 1000000, boost: 10, desc: 'The final world. Reach 100M carrots here to finish the game',
+  { id: 'candy',  name: 'Candy World',  emoji: '🍭', cost: 1e7,    boost: 8,  desc: 'Sprinkles rain down from the sky',
+    bg: 'linear-gradient(160deg, #fff0f7, #ff8cc6)' },
+  { id: 'arctic', name: 'Arctic World', emoji: '🏔️', cost: 1e8,    boost: 12, desc: 'Snow falls softly all around',
+    bg: 'linear-gradient(160deg, #ffffff, #8fc8ea)' },
+  { id: 'space',  name: 'Space World',  emoji: '🚀', cost: 1e9,    boost: 20, desc: 'The final world. Reach 10B carrots here to finish the game. No golden carrots up here!',
     bg: 'linear-gradient(160deg, #2a2f6a, #04050f)' },
 ];
 
@@ -417,8 +605,9 @@ const fresh = () => ({ carrots: 0, clicks: 0, autos: 0, mult: 1,
   carrotSkins: ['classic'], carrotSkin: 'classic', cursorSkins: ['default'], cursorSkin: 'default',
   trailSkins: ['none'], trailSkin: 'none', tapSkins: ['ripple'], tapSkin: 'ripple',
   crit: 0, turbo: 0, farms: 0, tractors: 0, golden: 0, cellar: 0, goldenCaught: 0, lastSeen: Date.now(),
-  world: 'normal', worldsUnlocked: ['normal'], endOfferedGoal: 0, magnet: 0, timesBeaten: 0 });
-const END_GOAL = 1e8;   // carrots needed in Space World to finish the game
+  world: 'normal', worldsUnlocked: ['normal'], endOfferedGoal: 0, magnet: 0, timesBeaten: 0,
+  questDay: '', questStats: {}, questClaimed: [] });
+const END_GOAL = 1e10;   // carrots needed in Space World to finish the game
 let state = fresh();
 try { Object.assign(state, JSON.parse(localStorage.getItem(SAVE_KEY)) || {}); } catch {}
 // fall back to the default if an equipped item was removed from the game
@@ -429,9 +618,19 @@ if (!WORLDS.some(w => w.id === state.world)) state.world = 'normal';
 if (state.ended) { state.timesBeaten = Math.max(state.timesBeaten, 1); delete state.ended; }  // older saves
 if (!TAPS.some(t => t.id === state.tapSkin)) state.tapSkin = 'ripple';
 if (!state.tapSkins.includes('ripple')) state.tapSkins.push('ripple');
+if (state.cursorSkins.includes('admin')) grantAdmin({});   // older Admin Bunny owners also get its trail and tap effect
+
+// give the Admin Bunny's cursor, trail and tap effect; equip[kind] = true also puts it on
+function grantAdmin(equip) {
+  for (const [kind, id] of Object.entries(ADMIN_ITEMS)) {
+    if (!state[kind + 'Skins'].includes(id)) state[kind + 'Skins'].push(id);
+    if (equip[kind]) state[kind + 'Skin'] = id;
+  }
+}
 const save = () => { state.lastSeen = Date.now(); try { localStorage.setItem(SAVE_KEY, JSON.stringify(state)); } catch {} };
 
 const $ = id => document.getElementById(id);
+let lobbyOpen = true;   // the start screen shows on every visit until Play is pressed
 const skinBoost = () => (CARROT_SKINS.find(s => s.id === state.carrotSkin) || CARROT_SKINS[0]).boost;
 const worldOf = id => WORLDS.find(w => w.id === id) || WORLDS[0];
 const worldBoost = () => worldOf(state.world).boost;
@@ -462,7 +661,7 @@ const UPGRADES = [
     cost: n => Math.round(100000 * 1.3 ** n), toast: '🚜 Tractor bought!' },
   { key: 'golden', ico: '✨', name: 'Golden Soil', tag: n => `Lv ${n}`, max: 3,
     desc: n => n < 3 ? `Next: golden carrots ${SOIL_PERKS[n + 1]}` : `Golden carrots ${SOIL_PERKS[3]}`,
-    cost: n => Math.round(3000 * 4 ** n), toast: '✨ Golden Soil upgraded! Here comes one now!',
+    cost: n => Math.round(20000 * 5 ** n), toast: '✨ Golden Soil upgraded! Here comes one now!',
     // show it off right away: a golden carrot flies in and the timer restarts at the new speed
     after: () => { clearTimeout(goldenTimer); spawnGolden(); applySoil(); } },
   { key: 'cellar', ico: '🏚️', name: 'Carrot Cellar', max: 1,
@@ -564,6 +763,78 @@ function ripple(x, y, color, delay = 0) {
   ], { duration: 600, delay, easing: 'cubic-bezier(.2,.8,.3,1)', fill: 'backwards' }).onfinish = () => el.remove();
 }
 
+const square = (color, size) => {
+  const d = document.createElement('div');
+  d.style.cssText = `width:${size}px;height:${size}px;background:${color}`;
+  return d;
+};
+// a quick glowing circle that pops and fades
+function flash(x, y, color, size) {
+  const el = document.createElement('div');
+  el.className = 'fx';
+  el.style.cssText = `left:${x}px;top:${y}px;width:${size}px;height:${size}px;border-radius:50%;background:radial-gradient(circle, ${color}, transparent 70%)`;
+  document.body.appendChild(el);
+  el.animate([
+    { transform: 'translate(-50%,-50%) scale(.3)', opacity: 1 },
+    { transform: 'translate(-50%,-50%) scale(2.4)', opacity: 0 },
+  ], { duration: 260, easing: 'ease-out' }).onfinish = () => el.remove();
+}
+// a thick fast ring with a glow
+function shockRing(x, y, color, delay) {
+  const el = document.createElement('div');
+  el.className = 'fx';
+  el.style.cssText = `left:${x}px;top:${y}px;width:30px;height:30px;border-radius:50%;border:6px solid ${color};box-shadow:0 0 18px ${color}`;
+  document.body.appendChild(el);
+  el.animate([
+    { transform: 'translate(-50%,-50%) scale(.3)', opacity: 1 },
+    { transform: 'translate(-50%,-50%) scale(6)', opacity: 0 },
+  ], { duration: 420, delay, easing: 'cubic-bezier(.1,.7,.3,1)', fill: 'backwards' }).onfinish = () => el.remove();
+}
+// 5 zig-zag bolts shooting out, flickering
+function lightning(x, y) {
+  const ns = 'http://www.w3.org/2000/svg', S = 260;
+  const svg = document.createElementNS(ns, 'svg');
+  svg.setAttribute('width', S);
+  svg.setAttribute('height', S);
+  svg.classList.add('fx');
+  svg.style.cssText = `left:${x - S / 2}px;top:${y - S / 2}px;overflow:visible;filter:drop-shadow(0 0 6px #ffe94d)`;
+  for (let b = 0; b < 5; b++) {
+    const a = b / 5 * Math.PI * 2 + Math.random() * .6, len = 70 + Math.random() * 45;
+    let pts = `${S / 2},${S / 2}`;
+    for (let k = 1; k <= 5; k++) {
+      const d = len * k / 5, j = (k % 2 ? 1 : -1) * (6 + Math.random() * 8);
+      pts += ` ${S / 2 + Math.cos(a) * d - Math.sin(a) * j},${S / 2 + Math.sin(a) * d + Math.cos(a) * j}`;
+    }
+    const p = document.createElementNS(ns, 'polyline');
+    p.setAttribute('points', pts);
+    p.setAttribute('fill', 'none');
+    p.setAttribute('stroke', b % 2 ? '#fff6a8' : '#ffe94d');
+    p.setAttribute('stroke-width', '3.5');
+    p.setAttribute('stroke-linejoin', 'round');
+    svg.appendChild(p);
+  }
+  document.body.appendChild(svg);
+  svg.animate([{ opacity: 1 }, { opacity: .2 }, { opacity: 1 }, { opacity: .5 }, { opacity: 0 }],
+    { duration: 420, easing: 'linear' }).onfinish = () => svg.remove();
+}
+// colorful dots spiraling outward
+function galaxy(x, y) {
+  for (let i = 0; i < 26; i++) {
+    const el = dot(`hsl(${200 + Math.random() * 130} 95% ${60 + Math.random() * 20}%)`, 4 + Math.random() * 4);
+    el.classList.add('fx');
+    el.style.left = x + 'px';
+    el.style.top = y + 'px';
+    document.body.appendChild(el);
+    const a0 = i / 26 * Math.PI * 2, frames = [];
+    for (let k = 0; k <= 8; k++) {
+      const a = a0 + k * .45, r = k * 13;
+      frames.push({ transform: `translate(calc(-50% + ${Math.cos(a) * r}px), calc(-50% + ${Math.sin(a) * r}px))`, opacity: 1 - k / 9 });
+    }
+    el.animate(frames, { duration: 900, easing: 'ease-out' }).onfinish = () => el.remove();
+  }
+  flash(x, y, 'rgba(180,140,255,.8)', 60);
+}
+
 function tapEffect(x, y) {
   const orange = getComputedStyle(document.documentElement).getPropertyValue('--b2');
   switch (state.tapSkin) {
@@ -579,6 +850,24 @@ function tapEffect(x, y) {
       ripple(x, y, `hsl(${hue} 95% 60%)`);
       break;
     }
+    case 'pixels':
+      fling(x, y, { n: 14, make: i => square(['#ff7a1a', '#ffa24a', '#f26200', '#ffd166'][i % 4], 9), dist: [40, 110], dur: 750, gravity: 50 });
+      break;
+    case 'shockwave':
+      flash(x, y, 'rgba(255,255,255,.95)', 50);
+      shockRing(x, y, '#fff', 0);
+      shockRing(x, y, orange, 90);
+      break;
+    case 'lightning':
+      flash(x, y, 'rgba(255,240,120,.8)', 40);
+      lightning(x, y);
+      break;
+    case 'galaxy':
+      galaxy(x, y);
+      break;
+    case 'tophats':
+      fling(x, y, { n: 7, make: () => emo('🎩', 26), dist: [60, 115], dur: 950, gravity: 110, spin: 300 });
+      break;
     default:
       ripple(x, y, orange);
       ripple(x, y, orange, 120);
@@ -603,7 +892,7 @@ addEventListener('pointermove', e => {
 });
 
 const place = (el, x, y) => { el.style.left = x + 'px'; el.style.top = y + 'px'; return el; };
-let lastPixel = '';
+let lastPixel = '', neonFlip = false;
 // each trail style: minimum ms between pieces, and make() -> [element, keyframes, options]
 const TRAIL_STYLES = {
   dot: { gap: 16, make: (x, y, t) => [place(dot(t.color, 10), x, y), [
@@ -628,6 +917,33 @@ const TRAIL_STYLES = {
   comet: { gap: 0, make: (x, y) => [place(dot('#ff8a2b', 9), x, y), [
     { transform: 'translate(-50%,-50%) scale(1)', opacity: 1 },
     { transform: 'translate(-50%,-50%) scale(0)', opacity: .3 }], { duration: 350, easing: 'linear' }] },
+
+  // flickering flames that drift upward
+  fire: { gap: 14, make: (x, y) => [place(dot(['#ffd166', '#ff9a3c', '#ff5a1a'][Math.random() * 3 | 0], 11), x, y), [
+    { transform: 'translate(-50%,-50%) scale(1)', opacity: 1 },
+    { transform: `translate(calc(-50% + ${rnd(-6, 6)}px), calc(-50% - 24px)) scale(.15)`, opacity: 0 }],
+    { duration: 480, easing: 'ease-out' }] },
+
+  // glowing pink and cyan dots, alternating
+  neon: { gap: 12, make: (x, y) => [place(dot((neonFlip = !neonFlip) ? '#ff3dd8' : '#2ef2ff', 8), x, y), [
+    { transform: 'translate(-50%,-50%) scale(1)', opacity: 1 },
+    { transform: 'translate(-50%,-50%) scale(.3)', opacity: 0 }], { duration: 500, easing: 'ease-out' }] },
+
+  // tiny electric streaks zapping off in random directions
+  sparks: { gap: 8, make: (x, y) => {
+    const el = document.createElement('div');
+    el.style.cssText = 'width:11px;height:2px;border-radius:2px;background:#9ffcff;box-shadow:0 0 6px #2ef2ff';
+    const a = rnd(0, 360);
+    return [place(el, x, y), [
+      { transform: `translate(-50%,-50%) rotate(${a}deg) translateX(0)`, opacity: 1 },
+      { transform: `translate(-50%,-50%) rotate(${a}deg) translateX(${rnd(18, 34)}px)`, opacity: 0 }],
+      { duration: 300, easing: 'ease-out' }];
+  } },
+
+  // The Admin Bunny's trail: short, solid black, fades fast
+  shadow: { gap: 0, make: (x, y) => [place(dot('#000', 9), x, y), [
+    { transform: 'translate(-50%,-50%) scale(1)', opacity: .95 },
+    { transform: 'translate(-50%,-50%) scale(0)', opacity: 0 }], { duration: 260, easing: 'ease-out' }] },
 
   smoke: { gap: 30, make: (x, y) => {
     const el = document.createElement('div');
@@ -656,6 +972,9 @@ $('carrotBtn').addEventListener('pointerdown', e => {
   const gain = clickValue() * (crit ? 10 : 1);
   state.carrots += gain;
   state.clicks++;
+  questAdd('clicks', 1);
+  questAdd('earned', gain);
+  if (crit) questAdd('crits', 1);
   squish();
   tapEffect(e.clientX, e.clientY);
   floatAboveCarrot((crit ? 'CRIT! +' : '+') + fmt(gain), crit ? 'crit' : '');
@@ -668,7 +987,58 @@ function applyCarrotSkin() {
   const s = CARROT_SKINS.find(k => k.id === state.carrotSkin) || CARROT_SKINS[0];
   const root = document.documentElement.style;
   for (const k of ['b1', 'b2', 'ridge', 'l1', 'l2']) root.setProperty('--' + k, s[k]);
+  for (const k of CARROT_SKINS) $('wrap').classList.toggle('skin-' + k.id, k.id === s.id);
+  $('wrap').classList.toggle('fxskin', s.id !== 'classic');
+  clearInterval(skinFxTimer);
+  if (SKIN_FX[s.id]) skinFxTimer = setInterval(() => { if (!document.hidden && !lobbyOpen) SKIN_FX[s.id](); }, 280);
 }
+
+// little particles around the carrot for each special skin
+let skinFxTimer;
+function fxPiece(css, text = '') {
+  const el = document.createElement('div');
+  el.className = 'skinfx';
+  el.style.cssText = css;
+  el.textContent = text;
+  $('wrap').appendChild(el);
+  return el;
+}
+const fxDone = el => () => el.remove();
+const SKIN_FX = {
+  golden: () => {   // gold sparkles twinkling
+    const el = fxPiece(`left:${rnd(15, 85)}%;top:${rnd(10, 85)}%;color:#ffcc33;font-size:${rnd(12, 20)}px;text-shadow:0 0 8px #ffd84d`, '✦');
+    el.animate([{ transform: 'scale(0) rotate(0deg)', opacity: 0 }, { transform: 'scale(1) rotate(90deg)', opacity: 1, offset: .5 },
+      { transform: 'scale(0) rotate(180deg)', opacity: 0 }], { duration: rnd(900, 1400) }).onfinish = fxDone(el);
+  },
+  purple: () => {   // magic orbs floating up
+    const s = rnd(6, 12);
+    const el = fxPiece(`left:${rnd(25, 75)}%;top:80%;width:${s}px;height:${s}px;border-radius:50%;background:#c49bff;box-shadow:0 0 12px 3px #a55fff`);
+    el.animate([{ transform: 'translate(0,0)', opacity: 0 }, { opacity: .9, offset: .25 },
+      { transform: `translate(${rnd(-30, 30)}px, -200px)`, opacity: 0 }], { duration: rnd(1800, 2800), easing: 'ease-out' }).onfinish = fxDone(el);
+  },
+  frozen: () => {   // snowflakes drifting down
+    const el = fxPiece(`left:${rnd(5, 95)}%;top:0;color:#a8e2ff;font-size:${rnd(10, 16)}px;text-shadow:0 0 4px #fff`, '❄');
+    el.animate([{ transform: 'translate(0,0) rotate(0deg)', opacity: 0 }, { opacity: 1, offset: .15 },
+      { transform: `translate(${rnd(-25, 25)}px, 320px) rotate(${rnd(90, 270)}deg)`, opacity: 0 }], { duration: rnd(2600, 3600) }).onfinish = fxDone(el);
+  },
+  midnight: () => {   // tiny stars blinking around it
+    const s = rnd(2, 4);
+    const el = fxPiece(`left:${rnd(10, 90)}%;top:${rnd(5, 90)}%;width:${s}px;height:${s}px;border-radius:50%;background:#fff;box-shadow:0 0 6px 2px #9aa4ff`);
+    el.animate([{ opacity: 0 }, { opacity: 1 }, { opacity: 0 }], { duration: rnd(1000, 1800) }).onfinish = fxDone(el);
+  },
+  ice: () => {   // water drops falling off the bottom
+    const el = fxPiece(`left:${rnd(35, 62)}%;top:${rnd(55, 70)}%;width:6px;height:9px;border-radius:50% 50% 50% 50% / 60% 60% 40% 40%;` +
+      'background:#6cc0f0;box-shadow:0 0 4px #bfe9ff');
+    el.animate([{ transform: 'translateY(0) scale(.4)', opacity: 0 }, { transform: 'translateY(0) scale(1)', opacity: 1, offset: .2 },
+      { transform: 'translateY(130px) scale(1)', opacity: 0 }], { duration: 1100, easing: 'ease-in' }).onfinish = fxDone(el);
+  },
+  heavenly: () => {   // soft glowing motes rising
+    const s = rnd(4, 8);
+    const el = fxPiece(`left:${rnd(15, 85)}%;top:${rnd(40, 85)}%;width:${s}px;height:${s}px;border-radius:50%;background:#fffbe0;box-shadow:0 0 10px 3px #ffe58a`);
+    el.animate([{ transform: 'translateY(0)', opacity: 0 }, { opacity: 1, offset: .3 },
+      { transform: 'translateY(-90px)', opacity: 0 }], { duration: rnd(1400, 2200), easing: 'ease-out' }).onfinish = fxDone(el);
+  },
+};
 
 const cursorCache = {};
 function emojiCursor(emoji) {
@@ -730,12 +1100,13 @@ function skinRow(s, i, kind) {
   const equipped = state[kind + 'Skin'] === s.id;
   const ico = kind === 'carrot'
     ? `<div class="swatch" style="--sb1:${s.b1};--sb2:${s.b2};--sl:${s.l1}">
-         <div class="leaf"></div><div class="body"></div></div>`
+         <div class="leaf"></div><div class="body"></div>
+         ${s.badge ? `<span style="position:absolute;right:-12px;top:-8px;font-size:15px">${s.badge}</span>` : ''}</div>`
     : s.icon || s.emoji;
   const btn = equipped ? '<button class="buy done" disabled>Equipped</button>'
     : owned ? `<button class="buy ghost" data-action="equip-${kind}:${s.id}">Equip</button>`
     : buyBtn(`skin-${kind}:${s.id}`, s.cost);
-  let desc = s.secret ? '🏆 Earned by beating the game 3 times' : s.cost ? (owned ? 'Owned' : SKIN_LABEL[kind]) : 'Free';
+  let desc = s.secret ? `🏆 Earned by beating the game ${ADMIN_WINS} times` : s.cost ? (owned ? 'Owned' : SKIN_LABEL[kind]) : 'Free';
   if (s.boost) desc = `<b style="color:var(--accent)">${s.boost}x carrots per click</b> · ${desc}`;
   return itemHTML({ ico, name: s.name, desc, btn, equipped, i });
 }
@@ -816,6 +1187,24 @@ const AMBIENT = {
       { transform: `translate(${dx}px, ${innerHeight + 40}px) rotate(${spin}deg)`, opacity: .9 },
     ], { duration: rnd(7000, 11000), easing: 'ease-in-out' }).onfinish = () => el.remove();
   },
+  candy: () => {   // rainbow sprinkles
+    const el = ambientPiece(`width:4px;height:11px;border-radius:2px;left:${rnd(0, 100)}%;top:-20px;` +
+      `background:${['#ff5fa2', '#ffd23f', '#5fd3ff', '#7cf08a', '#b07bff'][Math.random() * 5 | 0]}`);
+    el.animate([
+      { transform: 'translate(0, 0) rotate(0deg)' },
+      { transform: `translate(${rnd(-80, 80)}px, ${innerHeight + 40}px) rotate(${rnd(360, 1080)}deg)` },
+    ], { duration: rnd(6000, 9000), easing: 'linear' }).onfinish = () => el.remove();
+  },
+  arctic: () => {   // snow
+    const s = rnd(4, 9), sway = rnd(20, 50);
+    const el = ambientPiece(`width:${s}px;height:${s}px;border-radius:50%;left:${rnd(0, 100)}%;top:-20px;` +
+      'background:#fff;box-shadow:0 0 4px rgba(90,150,210,.7)');
+    el.animate([
+      { transform: 'translate(0, 0)' },
+      { transform: `translate(${sway}px, ${innerHeight * .5}px)` },
+      { transform: `translate(${-sway}px, ${innerHeight + 40}px)` },
+    ], { duration: rnd(7000, 12000), easing: 'linear' }).onfinish = () => el.remove();
+  },
   space: () => {  // shooting star
     const el = ambientPiece(`width:90px;height:2px;left:${rnd(0, 60)}%;top:${rnd(0, 45)}%;` +
       'background:linear-gradient(270deg, #fff, transparent);border-radius:2px');
@@ -894,6 +1283,7 @@ function travel(w) {
     { opacity: 1, transform: 'scale(1) rotate(270deg)' },
   ], { duration: 700, easing: 'ease-in', fill: 'forwards' }).onfinish = () => {
     state.world = w.id;
+    questAdd('travels', 1);
     applyWorld();
     save();
     render();
@@ -917,35 +1307,39 @@ function showEndChoice() {
   save();
   showEndModal(`<div class="big">🚀</div>
     <h2>You made it!</h2>
-    <p>You reached <b>100,000,000 carrots</b> in Space World!<br>
+    <p>You reached <b>10,000,000,000 carrots</b> in Space World!<br>
       End the game to win and start over from the beginning with 0 carrots, or keep playing?</p>
     <button class="big-btn primary" data-act="end">🏁 End the game</button>
     <button class="big-btn light" data-act="keep">Keep playing</button>`);
 }
 
 // finishing the game: counts a win, then sends you back to the very beginning.
-// Wins and the Admin Bunny (earned on the 3rd win) are kept. Wins in modded mode don't count.
+// Wins, today's quests and the Admin Bunny set (earned on win ADMIN_WINS) are kept. Modded wins don't count.
 function endGame() {
   const stats = { clicks: state.clicks, golden: state.goldenCaught, carrots: state.carrots };
   const counted = !state.modded;
   const wins = state.timesBeaten + (counted ? 1 : 0);
   const hadAdmin = state.cursorSkins.includes('admin');
-  const newAdmin = counted && wins >= 3 && !hadAdmin;
-  const adminOn = newAdmin || (hadAdmin && state.cursorSkin === 'admin');
+  const newAdmin = counted && wins >= ADMIN_WINS && !hadAdmin;
+  const wearing = {};
+  for (const [kind, id] of Object.entries(ADMIN_ITEMS)) wearing[kind] = newAdmin || state[kind + 'Skin'] === id;
+  const quests = { questDay: state.questDay, questStats: state.questStats, questClaimed: state.questClaimed };
 
   resetGame();
+  Object.assign(state, quests);
   state.timesBeaten = wins;
-  if (hadAdmin || newAdmin) state.cursorSkins.push('admin');
-  if (adminOn) state.cursorSkin = 'admin';
+  if (hadAdmin || newAdmin) grantAdmin(wearing);
   refreshAll();
 
+  const left = ADMIN_WINS - wins;
   const extra = newAdmin
     ? `<div class="item equipped" style="text-align:left;margin-bottom:12px;animation:none">
          <div class="ico" style="font-size:30px">${HAT_BUNNY}</div>
-         <div class="info"><div class="name">New cursor: The Admin Bunny!</div>
-         <div class="desc">You beat the game 3 times. It's equipped now, and it's in your shop under Mice.</div></div></div>`
+         <div class="info"><div class="name">Unlocked: The Admin Bunny!</div>
+         <div class="desc">You beat the game ${ADMIN_WINS} times. You also got its 🖤 shadow trail and 🎩 top hat tap effect.
+           All three are equipped now and in your shop.</div></div></div>`
     : !counted ? '<p>Wins in modded mode don\'t count toward your total.</p>'
-    : wins < 3 ? `<p>Beat it <b>${3 - wins} more time${3 - wins === 1 ? '' : 's'}</b> to unlock a secret cursor 👀</p>` : '';
+    : left > 0 ? `<p>Beat it <b>${left} more time${left === 1 ? '' : 's'}</b> to unlock a secret cursor 👀</p>` : '';
   showEndModal(`<div class="big">🏆</div>
     <h2>You beat Carrot Clicker!</h2>
     <p>From one carrot on a farm all the way to space. Wins: <b>${wins}</b></p>
@@ -1039,6 +1433,7 @@ $('list').addEventListener('click', e => {
   if (action === 'up') {
     const u = UPGRADES.find(x => x.key === id);
     state[id]++;
+    questAdd('buys', 1);
     if (u.after) u.after();
     toast(typeof u.toast === 'function' ? u.toast() : u.toast);
   } else {
@@ -1076,7 +1471,119 @@ const closeShop = () => document.body.classList.remove('shop-open');
 $('shopBtn').addEventListener('click', openShop);
 $('closeShop').addEventListener('click', closeShop);
 $('scrim').addEventListener('click', closeShop);
-addEventListener('keydown', e => { if (e.key === 'Escape') { closeShop(); closePortal(); } });
+addEventListener('keydown', e => { if (e.key === 'Escape') { closeShop(); closePortal(); closeQuests(); } });
+
+// ---------- daily quests: a new set every day at 6:00 AM (player's local time) ----------
+const QUEST_POOL = [
+  { id: 'click1k',  icon: '👆', text: 'Click the carrot 1,000 times',            stat: 'clicks',  goal: 1000, reward: 300000 },
+  { id: 'click3k',  icon: '👆', text: 'Click the carrot 3,000 times',            stat: 'clicks',  goal: 3000, reward: 1e6 },
+  { id: 'gold5',    icon: '✨', text: 'Catch 5 golden carrots',                   stat: 'golden',  goal: 5,    reward: 500000 },
+  { id: 'gold15',   icon: '✨', text: 'Catch 15 golden carrots',                  stat: 'golden',  goal: 15,   reward: 2e6 },
+  { id: 'crit50',   icon: '🍀', text: 'Land 50 CRIT clicks',                      stat: 'crits',   goal: 50,   reward: 750000 },
+  { id: 'crit200',  icon: '🍀', text: 'Land 200 CRIT clicks',                     stat: 'crits',   goal: 200,  reward: 2.5e6 },
+  { id: 'earn10m',  icon: '🥕', text: 'Earn 10M carrots',                         stat: 'earned',  goal: 1e7,  reward: 1.5e6 },
+  { id: 'earn500m', icon: '🥕', text: 'Earn 500M carrots',                        stat: 'earned',  goal: 5e8,  reward: 5e7 },
+  { id: 'buy15',    icon: '🛒', text: 'Buy 15 upgrades',                          stat: 'buys',    goal: 15,   reward: 400000 },
+  { id: 'travel3',  icon: '🌀', text: 'Travel through the Carrot Portal 3 times', stat: 'travels', goal: 3,    reward: 600000 },
+  { id: 'rush1',    icon: '🌟', text: 'Start a Golden Rush',                      stat: 'rushes',  goal: 1,    reward: 3e6 },
+  { id: 'play20',   icon: '⏱️', text: 'Play for 20 minutes',                      stat: 'seconds', goal: 1200, reward: 800000 },
+];
+const QUESTS_PER_DAY = 4;
+const RESET_HOUR = 6;
+
+// "quest day" changes at 6 AM instead of midnight: shift the clock back 6 hours before reading the date
+function questDayKey() {
+  const d = new Date(Date.now() - RESET_HOUR * 3600e3);
+  return `${d.getFullYear()}-${d.getMonth() + 1}-${d.getDate()}`;
+}
+function nextReset() {
+  const now = new Date(), r = new Date(now);
+  r.setHours(RESET_HOUR, 0, 0, 0);
+  if (r <= now) r.setDate(r.getDate() + 1);
+  return r;
+}
+// everyone gets the same 4 quests on the same day (seeded by the date), each about something different
+function pickQuests(day) {
+  let h = 7;
+  for (const c of day) h = (h * 31 + c.charCodeAt(0)) >>> 0;
+  const pool = [...QUEST_POOL], out = [];
+  while (out.length < QUESTS_PER_DAY && pool.length) {
+    h = (h * 1103515245 + 12345) >>> 0;
+    const q = pool.splice(h % pool.length, 1)[0];
+    if (!out.some(o => o.stat === q.stat)) out.push(q);
+  }
+  return out;
+}
+let todaysQuests = [];
+function checkQuestDay() {
+  const day = questDayKey();
+  if (state.questDay !== day) {
+    const hadOld = !!state.questDay;
+    Object.assign(state, { questDay: day, questStats: {}, questClaimed: [] });
+    if (hadOld) toast('📋 New daily quests are here!');
+  }
+  if (!todaysQuests.length || todaysQuests.day !== day) {
+    todaysQuests = pickQuests(day);
+    todaysQuests.day = day;
+  }
+}
+function questAdd(stat, n) { state.questStats[stat] = (state.questStats[stat] || 0) + n; }
+const questProgress = q => Math.min(state.questStats[q.stat] || 0, q.goal);
+const claimable = () => todaysQuests.filter(q => questProgress(q) >= q.goal && !state.questClaimed.includes(q.id)).length;
+
+function renderQuests() {
+  $('questList').innerHTML = todaysQuests.map((q, i) => {
+    const p = questProgress(q), done = p >= q.goal, claimed = state.questClaimed.includes(q.id);
+    const btn = claimed ? '<button class="buy done" disabled>Claimed ✓</button>'
+      : done ? `<button class="buy" data-claim="${q.id}">Claim<br>🥕 ${fmt(q.reward)}</button>`
+      : `<button class="buy" disabled>🥕 ${fmt(q.reward)}</button>`;
+    return itemHTML({ i, ico: q.icon, name: q.text, btn, equipped: done && !claimed,
+      desc: `<div class="qbar"><i style="width:${p / q.goal * 100}%"></i></div>${fmt(p)} / ${fmt(q.goal)}` })
+      .replace('class="item', `class="item${done ? ' qdone' : ''}`);
+  }).join('');
+}
+function updateQuestUI() {
+  checkQuestDay();
+  const n = claimable();
+  for (const b of [$('qBadge'), $('lobbyQBadge')]) { b.hidden = !n; b.textContent = n; }
+  const ms = nextReset() - Date.now();
+  $('questTimer').textContent = `New quests in ${Math.floor(ms / 3600e3)}h ${Math.floor(ms / 60e3) % 60}m (every day at 6:00 AM)`;
+  if (document.body.classList.contains('quests-open')) renderQuests();
+}
+const openQuests = () => { closeShop(); closePortal(); updateQuestUI(); renderQuests(); document.body.classList.add('quests-open'); };
+const closeQuests = () => document.body.classList.remove('quests-open');
+$('questBtn').addEventListener('click', openQuests);
+$('closeQuests').addEventListener('click', closeQuests);
+$('questScrim').addEventListener('click', closeQuests);
+$('questList').addEventListener('click', e => {
+  const btn = e.target.closest('[data-claim]');
+  if (!btn) return;
+  const q = todaysQuests.find(x => x.id === btn.dataset.claim);
+  if (!q || state.questClaimed.includes(q.id) || questProgress(q) < q.goal) return;
+  state.questClaimed.push(q.id);
+  state.carrots += q.reward;
+  const r = btn.getBoundingClientRect();
+  burst(r.left + r.width / 2, r.top + r.height / 2);
+  toast(`📋 Quest complete! +${fmt(q.reward)} carrots`);
+  save();
+  updateQuestUI();
+  renderQuests();
+  render();
+});
+
+// ---------- lobby ----------
+for (let i = 0; i < 12; i++) {
+  const s = document.createElement('span');
+  s.textContent = '🥕';
+  s.style.cssText = `left:${rnd(0, 96)}%;animation-duration:${rnd(9, 16)}s;animation-delay:-${rnd(0, 16)}s;font-size:${rnd(18, 34)}px`;
+  $('lobbyBg').appendChild(s);
+}
+$('playBtn').addEventListener('click', () => {
+  lobbyOpen = false;
+  $('lobby').classList.add('hide');
+  last = performance.now();
+});
+$('lobbyQuests').addEventListener('click', openQuests);
 
 // ---------- loop ----------
 function render() {
@@ -1101,7 +1608,10 @@ function render() {
 
 let last = performance.now();
 function tick(now) {
-  state.carrots += perSec() * (now - last) / 1000;
+  const dt = (now - last) / 1000;
+  state.carrots += perSec() * dt;
+  questAdd('earned', perSec() * dt);
+  if (!lobbyOpen && !document.hidden) questAdd('seconds', dt);
   last = now;
   render();
   requestAnimationFrame(tick);
@@ -1116,10 +1626,10 @@ setInterval(() => {
 
 // ---------- golden carrots: random bonus that pops up somewhere on screen ----------
 // Golden Soil levels: how much more often golden carrots come, and how much they're worth
-const SOIL_PERKS = ['', '2.5x as often · worth 2x', '4x as often · worth 3x · fly slower',
-  '5.5x as often · worth 4x · fly slower · sometimes come in pairs'];
+const SOIL_PERKS = ['', '2.5x as often · worth 1.5x', '4x as often · worth 2x · fly slower',
+  '5.5x as often · worth 2.5x · fly slower · sometimes come in pairs'];
 const soilFreq = () => 1 + state.golden * 1.5;
-const soilWorth = () => 1 + state.golden;
+const soilWorth = () => 1 + state.golden * .5;
 
 let goldenTimer;
 function scheduleGolden(first) {
@@ -1127,9 +1637,12 @@ function scheduleGolden(first) {
   goldenTimer = setTimeout(spawnGolden, secs / soilFreq() * 1000);
 }
 function spawnGolden() {
-  const duration = state.golden >= 2 ? 12000 : 9000;
-  flyGolden({ duration });
-  if (state.golden >= 3 && Math.random() < .35) setTimeout(() => flyGolden({ duration }), 700);
+  // none in Space World (it's the endgame), and none while the lobby is covering the screen
+  if (state.world !== 'space' && !lobbyOpen) {
+    const duration = state.golden >= 2 ? 12000 : 9000;
+    flyGolden({ duration });
+    if (state.golden >= 3 && Math.random() < .35) setTimeout(() => flyGolden({ duration }), 700);
+  }
   scheduleGolden();
 }
 
@@ -1189,9 +1702,11 @@ function magnetPull(g, flight, rush) {
 
 function catchGolden(x, y, rush) {
   // rush carrots are worth a quarter each, since there are so many
-  const reward = Math.max(100, perSec() * 60, clickValue() * 50) * soilWorth() / (rush ? 4 : 1);
+  const reward = Math.max(100, perSec() * 15, clickValue() * 15) * soilWorth() / (rush ? 4 : 1);
   state.carrots += reward;
   state.goldenCaught++;
+  questAdd('golden', 1);
+  questAdd('earned', reward);
   burst(x, y);
   spawnFloat('+' + fmt(reward), x, y, 'gold');
   if (!rush) toast(`✨ Golden carrot! +${fmt(reward)} carrots`);
@@ -1204,6 +1719,7 @@ function catchGolden(x, y, rush) {
 let rushing = false;
 function goldenRush() {
   rushing = true;
+  questAdd('rushes', 1);
   const n = 30 + Math.floor(Math.random() * 11);
   $('goldTint').classList.add('on');
   toast(`✨ GOLDEN RUSH! ${n} golden carrots incoming!`);
@@ -1223,6 +1739,9 @@ if (state.cellar && state.lastSeen) {
   }
 }
 
+checkQuestDay();
+updateQuestUI();
+setInterval(updateQuestUI, 1000);
 scheduleGolden(true);
 applySoil();
 applyWorld();
