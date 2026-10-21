@@ -390,6 +390,13 @@
   @keyframes draw { to { stroke-dashoffset: 0; } }
   @keyframes fillIn { to { fill-opacity: 1; } }
   @keyframes lobbyBob { 50% { transform: translateY(-10px) rotate(4deg); } }
+  #bestFlex {
+    margin: max(-6px, -1vh) 0 min(8px, 1.2vh); padding: 7px 16px; border-radius: 999px; font-weight: 700; font-size: min(15px, 2.6vh);
+    color: #7a4a00; background: linear-gradient(135deg, #fff3c4, #ffd76a); border: 1px solid #f2c14e;
+    box-shadow: 0 6px 16px rgba(230, 160, 20, .25); opacity: 0; animation: riseIn .6s var(--ease) 1.25s forwards;
+  }
+  #bestFlex[hidden] { display: none; }
+  #bestFlex b { color: #5a3500; font-weight: 900; }
   #lobby h1 {
     margin: 4px 0 min(10px, 1.5vh); font-size: clamp(30px, min(10vw, 10vh), 76px); font-weight: 900; letter-spacing: -.03em; line-height: 1;
     background: linear-gradient(135deg, #ff9a3c, #e8550a); -webkit-background-clip: text; background-clip: text; color: transparent;
@@ -560,6 +567,7 @@
       </g>
     </svg>
     <h1>Carrot Clicker</h1>
+    <div id="bestFlex" hidden>🏆 Best ever: <b id="bestAmount">0</b> carrots</div>
     <button class="lobby-btn" id="playBtn">▶ Play</button>
     <button class="lobby-btn" id="lobbyQuests"><span class="qbadge" id="lobbyQBadge" hidden>0</span>📋 Quests</button>
   </div>
@@ -724,7 +732,7 @@ const fresh = () => ({ carrots: 0, clicks: 0, autos: 0, mult: 1,
   trailSkins: ['none'], trailSkin: 'none', tapSkins: ['ripple'], tapSkin: 'ripple',
   crit: 0, turbo: 0, farms: 0, tractors: 0, golden: 0, cellar: 0, goldenCaught: 0, lastSeen: Date.now(),
   world: 'normal', worldsUnlocked: ['normal'], endOfferedGoal: 0, magnet: 0, timesBeaten: 0,
-  questDay: '', questStats: {}, questClaimed: [] });
+  questDay: '', questStats: {}, questClaimed: [], bestCarrots: 0 });
 const END_GOAL = 1e10;   // carrots needed in Space World to finish the game
 let state = fresh();
 try { Object.assign(state, JSON.parse(localStorage.getItem(SAVE_KEY)) || {}); } catch {}
@@ -1620,7 +1628,8 @@ function endGame() {
   const newAdmin = counted && wins >= ADMIN_WINS && !hadAdmin;
   const wearing = {};
   for (const [kind, id] of Object.entries(ADMIN_ITEMS)) wearing[kind] = newAdmin || state[kind + 'Skin'] === id;
-  const quests = { questDay: state.questDay, questStats: state.questStats, questClaimed: state.questClaimed };
+  const quests = { questDay: state.questDay, questStats: state.questStats, questClaimed: state.questClaimed,
+    bestCarrots: state.bestCarrots };   // your best-ever record survives ending the game too
 
   resetGame();
   Object.assign(state, quests);
@@ -1962,6 +1971,10 @@ function setText(node, text) { if (node.textContent !== text) node.textContent =
 function setHidden(el, hidden) { if (el.hidden !== hidden) el.hidden = hidden; }
 
 function render() {
+  // best-ever record for the lobby (modded mode's free carrots don't count)
+  if (!state.modded && state.carrots > state.bestCarrots) state.bestCarrots = state.carrots;
+  setHidden($('bestFlex'), state.bestCarrots < 1);
+  setText($('bestAmount'), fmt(state.bestCarrots));
   const amount = fmt(state.carrots), word = Math.floor(state.carrots) === 1 ? 'carrot' : 'carrots';
   setText($('carrots').firstChild, amount);
   setText($('carrots').lastChild, word);
