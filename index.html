@@ -150,13 +150,27 @@
   }
   #toast.show { transform: translate(-50%, 0); }
 
+  /* music toggle: a frosted pill like the stat chips, with little dancing equalizer bars */
   #musicBtn {
-    position: fixed; top: 16px; right: 16px; z-index: 10; width: 44px; height: 44px; border-radius: 50%;
-    border: 1px solid var(--line); background: #fff; font-size: 20px; cursor: pointer; box-shadow: var(--shadow);
-    transition: transform .2s var(--ease);
+    position: fixed; top: 16px; right: 16px; z-index: 10; height: 40px; padding: 0 16px 0 13px;
+    display: flex; align-items: center; gap: 8px; border-radius: 999px; border: 1px solid var(--line);
+    background: rgba(255, 255, 255, .82); -webkit-backdrop-filter: blur(10px); backdrop-filter: blur(10px);
+    color: var(--text); font: inherit; font-size: 13px; font-weight: 700; cursor: pointer;
+    box-shadow: 0 4px 16px rgba(20, 24, 32, .08); transition: transform .25s var(--ease), color .2s, box-shadow .2s;
   }
-  #musicBtn:hover { transform: scale(1.1); }
-  #musicBtn.off { opacity: .55; }
+  #musicBtn:hover { transform: translateY(-1px) scale(1.04); box-shadow: 0 8px 22px rgba(20, 24, 32, .12); }
+  #musicBtn:active { transform: scale(.96); }
+  #musicBtn svg { width: 17px; height: 17px; flex-shrink: 0; }
+  #musicBtn .mute { display: none; }
+  #musicBtn .eq { display: flex; align-items: flex-end; gap: 2px; height: 14px; }
+  #musicBtn .eq i { width: 3px; height: 4px; border-radius: 2px; background: var(--accent); animation: eq .9s ease-in-out infinite; }
+  #musicBtn .eq i:nth-child(2) { animation-delay: -.25s; }
+  #musicBtn .eq i:nth-child(3) { animation-delay: -.55s; }
+  #musicBtn .eq i:nth-child(4) { animation-delay: -.75s; }
+  @keyframes eq { 0%, 100% { height: 4px; } 50% { height: 14px; } }
+  #musicBtn.off { color: var(--muted); }
+  #musicBtn.off .mute { display: inline; }
+  #musicBtn.off .eq i { animation: none; height: 3px; background: var(--line); }
 
   /* ---------- carrot portal ---------- */
   #portalBtn {
@@ -229,6 +243,8 @@
     #shopBtn { top: auto; bottom: 20px; transform: none; flex-direction: row; padding: 14px 20px; }
     #shopBtn:hover { transform: scale(1.04); }
     body.shop-open #shopBtn { transform: translateX(40px); }
+    #musicBtn { padding: 0 12px; }
+    #musicBtn .lbl { display: none; }
     #portalBtn { top: auto; bottom: 20px; right: 140px; width: auto; flex-direction: row; padding: 14px 16px; font-size: 14px; }
     .carrot-wrap { width: 280px; height: 280px; }
     #carrotBtn { width: 170px; height: 220px; }
@@ -309,7 +325,14 @@
   <div class="list" id="list"></div>
 </aside>
 
-<button id="musicBtn" aria-label="Turn music off" title="Music">🔊</button>
+<button id="musicBtn" aria-label="Turn music off">
+  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+    <path d="M11 5 6 9H3v6h3l5 4z" fill="currentColor"/>
+    <path class="mute" d="m16 9 5 6M21 9l-5 6"/>
+  </svg>
+  <span class="eq" aria-hidden="true"><i></i><i></i><i></i><i></i></span>
+  <span class="lbl">Music</span>
+</button>
 <button id="portalBtn"><span class="icon">🌀</span>Carrot Portal</button>
 <div id="portalScrim"></div>
 <div id="portal" role="dialog" aria-label="Carrot Portal">
@@ -773,31 +796,34 @@ function toast(msg) {
 }
 
 // ---------- background music ----------
-// An original, laid-back jazzy loop synthesized live with the Web Audio API (no audio files).
-// 8 bars: Cmaj7 Am7 Dm7 G7 Em7 A7 Dm7 G7, with vibraphone-ish lead, soft keys, bass and a shaker.
+// An original bossa-nova "shop channel" style loop, synthesized live with the Web Audio API
+// (no audio files, no copied melody). 8 bars: Fmaj7 Em7 Dm7 Cmaj7 Bbmaj7 Am7 Gm7 C7, with a
+// bouncy marimba lead, soft Rhodes-like stabs, a bossa bass line, gentle kick, clave and shaker.
 const MUSIC_KEY = 'carrotClickerMusic';
 const Music = (() => {
-  const BPM = 112, BEAT = 60 / BPM, BAR = BEAT * 4;
-  const CHORDS = [[60, 64, 67, 71], [57, 60, 64, 67], [57, 60, 62, 65], [55, 59, 62, 65],
-                  [55, 59, 62, 64], [55, 61, 64, 69], [57, 60, 62, 65], [55, 59, 62, 65]];
-  const BASS = [36, 33, 38, 31, 40, 33, 38, 31];
-  // melody: [eighth-note position in bar, midi note, length in eighths]
+  const BPM = 116, BEAT = 60 / BPM, BAR = BEAT * 4;
+  const CHORDS = [[57, 60, 64, 65], [55, 59, 62, 64], [57, 60, 62, 65], [55, 59, 60, 64],
+                  [58, 62, 65, 69], [57, 60, 64, 67], [55, 58, 62, 65], [55, 58, 60, 64]];
+  const BASS = [41, 40, 38, 36, 34, 33, 31, 36];
+  // melody: [eighth-note position in bar, midi note, length in eighths, grace note?]
   const MELODY = [
-    [[0, 76, 1], [1, 79, 1], [2, 83, 2], [4, 81, 1], [5, 79, 1], [6, 76, 2]],
-    [[0, 72, 1], [1, 76, 1], [2, 81, 3], [6, 79, 2]],
-    [[0, 77, 1], [1, 81, 1], [2, 84, 2], [4, 83, 1], [5, 81, 1], [6, 77, 2]],
-    [[0, 79, 3], [3, 77, 1], [4, 74, 2], [6, 71, 2]],
-    [[0, 76, 1], [1, 79, 1], [2, 83, 1], [3, 86, 3], [6, 83, 2]],
-    [[0, 85, 2], [2, 81, 1], [3, 79, 1], [4, 76, 4]],
-    [[0, 74, 1], [1, 77, 1], [2, 81, 1], [3, 84, 1], [4, 83, 1], [5, 81, 1], [6, 77, 2]],
-    [[0, 79, 4], [4, 74, 1], [5, 77, 1], [6, 71, 2]],
+    [[0, 81, 1, 1], [1, 84, 1], [3, 88, 1], [4, 86, 1], [6, 84, 2]],
+    [[1, 83, 1], [2, 79, 1], [3, 76, 1], [5, 79, 1], [6, 83, 2]],
+    [[0, 81, 1], [1, 77, 1], [2, 81, 1], [3, 84, 2, 1], [6, 83, 1], [7, 81, 1]],
+    [[0, 79, 3], [4, 76, 1], [5, 79, 1]],
+    [[0, 86, 1, 1], [1, 84, 1], [2, 81, 1], [3, 77, 1], [4, 79, 2], [6, 81, 1]],
+    [[0, 84, 2], [2, 83, 1], [3, 81, 1], [4, 76, 3]],
+    [[0, 77, 1], [1, 79, 1], [2, 82, 1], [3, 86, 2, 1], [5, 84, 1], [6, 82, 1], [7, 81, 1]],
+    [[0, 79, 2], [2, 76, 1], [3, 77, 1], [4, 79, 1], [5, 82, 1], [6, 79, 2]],
   ];
+  const CLAVE = [[0, 3, 6], [2, 4]];   // 3-2 bossa clave, in eighths, over two bars
   const hz = m => 440 * 2 ** ((m - 69) / 12);
   let ctx, master, noise, timer, bar = 0, nextBar = 0;
-  // swing the off-beat eighths a little for a relaxed feel
-  const at = (start, pos) => start + Math.floor(pos / 2) * BEAT + (pos % 2 ? BEAT * .62 : 0);
+  // bossa is nearly straight; just a hint of lilt on the off-beats
+  const at = (start, pos) => start + Math.floor(pos / 2) * BEAT + (pos % 2 ? BEAT * .54 : 0);
 
   function tone(type, freq, t, len, vol, attack = .01) {
+    t = Math.max(t, ctx.currentTime);   // grace notes can land just before "now" on the first bar
     const o = ctx.createOscillator(), g = ctx.createGain();
     o.type = type;
     o.frequency.value = freq;
@@ -819,19 +845,36 @@ const Music = (() => {
     s.start(t);
     s.stop(t + .08);
   }
+  function kick(t) {
+    const o = ctx.createOscillator(), g = ctx.createGain();
+    o.frequency.setValueAtTime(110, t);
+    o.frequency.exponentialRampToValueAtTime(45, t + .12);
+    g.gain.setValueAtTime(.45, t);
+    g.gain.exponentialRampToValueAtTime(.0001, t + .25);
+    o.connect(g).connect(master);
+    o.start(t);
+    o.stop(t + .3);
+  }
   function playBar(i, start) {
-    for (const [pos, m, len] of MELODY[i]) {        // vibraphone-like lead
-      const t = at(start, pos), d = len * BEAT / 2 + .25;
-      tone('sine', hz(m), t, d, .16);
-      tone('sine', hz(m) * 4, t, .25, .025);
+    for (const [pos, m, len, grace] of MELODY[i]) {   // marimba-like lead: short, bouncy notes
+      const t = at(start, pos), d = len * BEAT * .4 + .12;
+      if (grace) tone('sine', hz(m - 1), t - BEAT / 4, .1, .1);      // little slide-in from a half step below
+      tone('sine', hz(m), t, d, .17, .004);
+      tone('sine', hz(m) * 4, t, .07, .035, .002);                   // mallet "tick"
     }
-    for (const pos of [0, 3, 5]) {                    // soft electric-piano comping
-      for (const m of CHORDS[i]) tone('triangle', hz(m), at(start, pos), BEAT * .9, .035);
+    for (const pos of [0, 3, 6]) {                    // short Rhodes-like chord stabs
+      for (const m of CHORDS[i]) {
+        tone('sine', hz(m), at(start, pos), BEAT * .45, .045);
+        tone('sine', hz(m) * 2, at(start, pos), BEAT * .2, .012);
+      }
     }
-    tone('triangle', hz(BASS[i]), start, BEAT * 1.6, .22);           // bass: root, then fifth
-    tone('triangle', hz(BASS[i] + 7), start + BEAT * 2, BEAT * 1.6, .18);
-    for (let p = 0; p < 8; p++) shaker(at(start, p), p % 2 ? .05 : .03);
-    for (const b of [1, 3]) tone('sine', 1800, start + b * BEAT, .03, .03, .002);  // rim click
+    // bossa bass: root, fifth, root, fifth
+    [[0, 0, 3], [3, 7, 1], [4, 0, 3], [7, 7, 1]].forEach(([pos, step, len]) =>
+      tone('triangle', hz(BASS[i] + step), at(start, pos), len * BEAT * .45, .24));
+    kick(start);
+    kick(start + BEAT * 2);
+    for (const pos of CLAVE[i % 2]) tone('triangle', 1650, at(start, pos), .04, .05, .002);   // clave
+    for (let p = 0; p < 8; p++) shaker(at(start, p), p % 2 ? .045 : .025);
   }
   function schedule() {
     while (nextBar < ctx.currentTime + .3) {
@@ -873,7 +916,7 @@ const Music = (() => {
 let musicOn = true;
 try { musicOn = localStorage.getItem(MUSIC_KEY) !== 'off'; } catch {}
 function updateMusicBtn() {
-  $('musicBtn').textContent = musicOn ? '🔊' : '🔇';
+  $('musicBtn').querySelector('.lbl').textContent = musicOn ? 'Music' : 'Muted';
   $('musicBtn').classList.toggle('off', !musicOn);
   $('musicBtn').setAttribute('aria-label', musicOn ? 'Turn music off' : 'Turn music on');
 }
